@@ -16,48 +16,46 @@ export const variableConfig = {
             type: 'string',
             name: 'Data type',
             data: {
-                label: ['component', 'string', 'text', 'date', 'int', 'float'],
-                value: ['component', 'string', 'text', 'date', 'int', 'float'],
+                label: ['', 'component', 'string', 'text', 'date', 'int', 'float'],
+                value: ['', 'component', 'string', 'text', 'date', 'int', 'float'],
             },
+            default: '',
         },
         component: {
             type: 'component',
             name: 'Component',
-            data: (mgr, _data, page, model) => {
-                const allPageElement = mgr.findElements(page);
-                console.log(page)
-                const pComponents = allPageElement.filter(element => {
-                    return mgr.isElementViewOnly(element) 
-                            || mgr.isElementViewOperation(element)
+            data: (_data, page, modelData, mgr) => {
+                const viewOperationElements = mgr.findElements(page, (el) => {
+                    return mgr.isViewOnlyElement(el) || mgr.isViewOperationElement(el)
                 });
-                // @todo Find element
-                if(pComponents) {
-                    return pComponents.map(el => {
-                        return {label: el.name, value: el.id}
-                    })
-                }
-                return [];
+                if(!viewOperationElements) return [];
+                let values = [{ label: '', value: '' }]
+                viewOperationElements.forEach(el => {
+                    values.push({ label: el.name, value: el.id })
+                })
+                //console.log('values', values)
+                return values;
             },
+            default: '',
             isEnabled: (data) => {
                 return data.dataType === 'component';
             }
         },
         parameter: {
-            type: 'parameter',
+            type: 'select',
             name: 'Parameter',
             dataExpr: '@component.output',
+            default: '',
             isEnabled: (data) => {
-                return data.unit != undefined && data.unit != ''
+                return data.component !== undefined && data.component !== ''
             }
         },
         value: {
             type: 'string',
+            name: 'Value',
             label: 'Value',
         }
     },
-    logic: {
-
-    }
 }
 
 export default variableConfig;

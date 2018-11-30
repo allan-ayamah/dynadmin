@@ -1,19 +1,41 @@
-import React,{useState} from 'react';
+import React, { useState } from 'react';
 
-function Input(props){
+
+export const OBJECT_TYPE__INPUT_TYPE = {
+    string: 'text',
+    text: 'textarea',
+    boolean: 'checkbox',
+    number: 'number',
+}
+
+export function TextArea(props) {
+    const [value, setValue] = useState(props.value);
+    return (
+        <textarea 
+        id={props.id}
+        name={props.id}
+        className={props.className}
+        value={value}
+        disabled={props.disabled} 
+        onChange={(evt) => setValue(evt.target.value)}
+        onBlur={(evt) => props.onUpdate(props.id, evt.target.value)}
+        />
+    )
+}
+
+export function Input(props){
     const [value, setValue] = useState(props.value);
     const type = props.type;
-   
-    if(props.type == 'checkbox'){
+    if(props.type === 'checkbox'){
         return (
             <input 
                 id={props.id}
                 name={props.id}
                 type='checkbox'
                 checked={value}
-                className={props.className}
                 disabled={props.disabled} 
-                onChange={(evt) => props.onUpdate(props.id, evt.target.checked)}
+                onChange={(evt) => setValue(evt.target.checked)}
+                onBlur={(evt) => props.onUpdate(props.id, evt.target.checked)}
             />
         )
     }
@@ -24,8 +46,8 @@ function Input(props){
             name={props.id}
             className={props.className}
             value={value}
-            onChange={(evt) => setValue(evt.target.value)}
             disabled={props.disabled} 
+            onChange={(evt) => setValue(evt.target.value)}
             onBlur={(evt) => props.onUpdate(props.id, evt.target.value)} 
         />
     )
@@ -33,15 +55,50 @@ function Input(props){
 }
 
 
+const normalizeOptionsArray =  function(data, noSelection = false) {
+    if(!data) return [];
+    if(Array.isArray(data)) {
+        return noSelection ? [{ label: '', value: '' }, ...data] : data;
+    }
+    // Object
+    const resultArray = (noSelection || data.noSelection) ? [{ label: '', value: '' }] :  [];
+    if(data.labelValue !== undefined) {
+        data.labelValue.forEach( val => {
+            resultArray.push({ label: val, value: val });
+        });
+        return resultArray;
+    }
+    const valueIsDefined = data.value !== undefined;
+    const labelIsDefined = data.label !== undefined
+    if(valueIsDefined && labelIsDefined) {
+        data.value.forEach( (val, idx) => {
+            resultArray.push({ label: data.label[idx], value: val})
+        });
+        return resultArray;
+    } 
+    const dtSource = data.value || data.label;
+    dtSource.forEach( val => {
+        resultArray.push({ label: val, value: val });
+    });
+    return resultArray;
+}
 
-function Select(props) {
+
+
+export function Select(props) {
+    const [value, setValue] = useState(props.value);
+
+    const handleChange = (value) => {
+        props.onUpdate(props.id, value)
+        setValue(value);
+    }
+
+    const normalizedData = normalizeOptionsArray(props.itemData, props.noSelection);
     let options=[]
-    if(props.itemData.length > 0) {
-        options = [<option key={''} value={''}></option>];
-        props.itemData.forEach(opt => {
+    if(normalizedData.length > 0) {
+        normalizedData.forEach(opt => {
             const label = opt.label !== undefined ? opt.label : opt;
             const value = opt.value !== undefined ? opt.value : opt;
-            //console.log(`${value}: ${label}`)
             options.push(
                 <option key={value} value={value}>
                     {label}
@@ -53,48 +110,12 @@ function Select(props) {
         <select 
             id={props.id}
             name={props.id}
+            value={value}
             disabled={props.disabled} 
-            onChange={(evt) => props.onUpdate(props.id, evt.target.value)} 
+            onChange={(evt) => handleChange(evt.target.value)} 
             className={props.className}
         >
             {options}
         </select>
     );
-}
-
-const ITEM_INPUT_TYPE = {
-    string: 'text',
-    boolean:'checkbox',
-    number: 'number',
-    object: 'text'
-}
-
-export default function EditProperty(props) {
-    const {id, value, label} = props;
-
-    let contentProps = {
-        id: props.id, 
-        name: props.id,
-        value: props.value,
-        className: props.className,
-        itemData: props.data, 
-        disabled: props.disabled ? 'disabled' : '',
-        onUpdate: props.onUpdate
-    }
-    let content = null;
-    const isArrayItemData = Array.isArray(props.data);
-    if(isArrayItemData){
-        content = <Select {...contentProps}/>
-    } else {
-        const valType = typeof props.value;
-        const inputType = ITEM_INPUT_TYPE[valType];
-        content = <Input type={inputType} {...contentProps}/>
-    }
-
-    return(
-        <div className="attr-item form-group row">
-            <label className="attr-label col-sm-2 col-form-label">{label}</label>
-            <div className="attr-input col-sm-10">{content}</div>
-        </div>
-    )
 }

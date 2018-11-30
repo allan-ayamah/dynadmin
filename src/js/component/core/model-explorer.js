@@ -4,54 +4,19 @@ import PropTypes from 'prop-types';
 import {clone} from '../../common/helpers';
 
 
-
-
-const menuConfig = {
-    actions: [ 
-        'copy', 
-        'paste', 
-        'delete', 
-        'add', 
-    ],
-    groups: [
-       {
-            id: 'copy',
-            name: 'Copy'
-        },
-        {
-            id: 'paste',
-            name: 'Paste'
-        },
-        {
-            id: 'delete',
-            name: 'Delete'
-        },
-        {
-            id: 'add', 
-            name: 'Add',
-            viewItemInSubMenu: true,
-        }
-    ],
-    menuItems: [
-        {
-            name: 'Copy',
-            action: 'copy',
-            group: 'copy',
-        }
-    ]
-};
-
-
-
-function ModelElementCtxMenu(props) {
+function ElementContextMenu(props) {
     const ctxMenuId = props.id;
     const elementId = props.elementId;
     const config = props.config;
     const actions = config.actions;
     const groups = config.groups;
     const menuItems = config.menuItems;
-    const handleItemClick = props.handleItemClick;
 
+    const handleItemClick = (evt, data, target) => {
+        const action = data.action;
+        console.log(`Menuclicked: `)
+        return actions[action].handle(evt, data, target);  
+    }
 
     const displayMenu = [];
     groups.forEach((_group, groupIndex) => {
@@ -68,9 +33,11 @@ function ModelElementCtxMenu(props) {
                 </MenuItem>
             )
         });
-        if (_group.viewItemInSubMenu || mItems.length > 1) {
+        if ((_group.viewItemsInSubMenu && mItems.length > 0) || mItems.length > 1) {
             displayMenu.push(
-                <SubMenu key={`${ctxMenuId}_SM`} title={_group.name}>{mItems}</SubMenu>
+                <SubMenu key={`${ctxMenuId}_${_group.id}`} title={_group.name}>
+                    {mItems}
+                </SubMenu>
             );
         } else {
             displayMenu.push(mItems);
@@ -81,7 +48,7 @@ function ModelElementCtxMenu(props) {
     );
 }
 
-/*ModelElementCtxMenu.propTypes = {
+/*ElementContextMenu.propTypes = {
     id: PropTypes.string.isRequired,
     trigger: PropTypes.shape({
         elementId: PropTypes.string.is,
@@ -100,13 +67,6 @@ export class ModelExplorer extends React.Component {
         this.mgr = props.mgr;
     }
 
-    handleCtxMenuItemClick = (evt, data, target) => {
-        const action = data.action;
-        console.log(`Menuclicked: `)
-
-        const handle = this.props.ctxMenuActionsMap[action].handle;
-        handle(evt, data, target)    
-    }
 
     handleItemClick = (id) => {
         this.props.handleElementClick(id);
@@ -130,7 +90,9 @@ export class ModelExplorer extends React.Component {
                     childItems.push(this.process(childComponent, nextLevel))
                 });
                 tree.push(
-                    <li key={`${data.id}_${nextLevel}`} className='level-wrap'>
+                    <li key={`${data.id}_${nextLevel}`} 
+                        className='level-wrap' 
+                        style={ {"margin": "3px 15px"} }>
                         <ul className='children'>{childItems}</ul>
                     </li>
                 );
@@ -141,23 +103,22 @@ export class ModelExplorer extends React.Component {
 
 
     treeItem(data) {
-        console.log("COnfig 4: "+data.id)
-        
-        const menuItems = this.props.mgr.elementMenuItems(data);
-        console.log(menuItems.length)
-        console.log(`BEFORE MERGE: ${menuConfig.menuItems.length}`)
-        const elementMenuConfig = clone(menuConfig)
-        
-        if(menuItems) {
-            elementMenuConfig.menuItems.push(...menuItems);
+
+        const menuConfig = {
+            actions: this.props.menuConfig.actions,
+            groups: clone(this.props.menuConfig.groups),
+            menuItems: []
         }
-        console.log(`AFTER MERGE: ${menuConfig.menuItems.length}`)
+        const menuItems = this.props.mgr.elementMenuItems(data);
+        if(menuItems) {
+            menuConfig.menuItems.push(...menuItems)
+        }
+        //console.log(`Element ${data.id}: ${menuConfig.menuItems.length}`)
         const ctxTrigger = {
             key: `MODEL_EXPLORER_${data.id}`,
             id: `MODEL_EXPLORER_${data.id}`,
-            handleItemClick: this.handleCtxMenuItemClick,
             elementId: data.id,
-            config: elementMenuConfig
+            config: menuConfig
         }
         
         const item = (
@@ -171,7 +132,7 @@ export class ModelExplorer extends React.Component {
                         </span>
                     </div>
                 </ContextMenuTrigger>
-                <ModelElementCtxMenu {...ctxTrigger}/>
+                <ElementContextMenu {...ctxTrigger}/>
             </li>
         );
         return item;

@@ -3,22 +3,23 @@ import React, { Component } from 'react';
 import  {EditProperties} from './js/component/property/edit-properties'
 import DynManager from './js/component/core/dyn-manager';
 import ModelExplorer from './js/component/core/model-explorer';
-import {describeId} from './js/common/helpers'
+import { Stage } from './js/component/editor/index';
+import { describeId } from './js/common/helpers'
+import { componentsConfig, componentGroups, validationRules } from './js/components-config'
 
 import './css/react-contextmenu.css';
 import './css/dyn-admin.css';
 
 
 function Panel(props) {
-  let wrapClassName = 'panel card '; 
-  if(props.className){
-    wrapClassName+=props.className;
-  }
+  let wrapClassName = ['panel','card', props.className]; 
   return(
-    <div className={wrapClassName}>
+    <div className={wrapClassName.join(' ')} style={props.style}>
       <div className='panel-header card-header'>{props.title}</div>
-      <div className='panel-body card-body'>
+      <div className='panel-body card-body' style={{overflow: 'auto', position: 'relative'}}>
+        <div style={{ position: '' }}>
         {props.render ? props.render(props.contentProps) : props.children}
+        </div>
       </div>
     </div>
   )
@@ -28,20 +29,6 @@ function Panel(props) {
 class DynAdmin extends Component {
   constructor(props) {
     super(props)
-    this.mgr = new DynManager();
-    this.model = this.mgr.createModel(1, 'Dynamic model 3');
-
-    const var1 = this.mgr.createElement(this.model, 'page1', 'var')
-    const var2 = this.mgr.createElement(this.model, 'page1', 'var')
-    this.state = {
-      focusOnPropertiesPanel: false,
-      editProperties: { 
-        focus: false, 
-        contentProps: {}
-      }
-    };
-
-    this.handleCreateElement = this.handleCreateElement.bind(this);
     
     this.ctxMenuActionsMap = {
       copy: {
@@ -67,8 +54,56 @@ class DynAdmin extends Component {
           }
       } 
     }
-  }
+    const actionGroups = [
+      {
+           id: 'copy',
+           name: 'Copy'
+       },
+       {
+           id: 'paste',
+           name: 'Paste'
+       },
+       {
+           id: 'delete',
+           name: 'Delete'
+       },
+       {
+           id: 'add', 
+           name: 'Add',
+           viewItemsInSubMenu: true,
+       }
+    ];
+    actionGroups.push(...componentGroups);
+    this.menuConfig = {
+      actions: this.ctxMenuActionsMap,
+      groups: actionGroups,
+    }
 
+    const opts = {
+      components: [...componentsConfig, ...validationRules],
+    }
+
+    this.mgr = new DynManager(opts);
+    this.model = this.mgr.createModel(1, 'Dynamic model 3');
+
+    const form1 = this.mgr.createElement(this.model, 'page1', 'form')
+    const field1 = this.mgr.createElement(this.model, 'page1.form1', 'fld')
+    const selectionField1 = this.mgr.createElement(this.model, 'page1.form1', 'sfld')
+
+    //console.log(this.model.data)
+    const var1 = this.mgr.createElement(this.model, 'page1', 'var')
+    const var2 = this.mgr.createElement(this.model, 'page1', 'var')
+
+    this.state = {
+      editProperties: { 
+        focus: false, 
+        contentProps: {}
+      }
+    };
+
+    this.handleCreateElement = this.handleCreateElement.bind(this);
+
+  }
 
   handleCreateElement = (parentElId, componentId) => {
     const element = this.mgr.createElement(this.model, parentElId, componentId);
@@ -76,12 +111,10 @@ class DynAdmin extends Component {
   }
 
   handleSaveProperty = (dataKey, data) => {
-    console.log(`Update: ${dataKey}`)
+    // console.log(`Update: ${dataKey}`)
     const idDescription = describeId(dataKey);
     this.model.set(dataKey, data);
-    console.log(idDescription)
     if(idDescription.localId === 'name') {
-      console.log("re- render")
       this.handleEditElementProps(idDescription.parentId);
     }
   }
@@ -131,22 +164,35 @@ class DynAdmin extends Component {
       <div id="dyn-admin" className="dyn-admin">
         <header id="dyn-admin-header">
         </header>
-        <div className="dyn-admin-vars-warp container">
-          <Panel 
-            title='Project explorer' 
-            className="vars-cexprs-holder"
-            >
-            <div className="row">
-              <ModelExplorer key={this.model.id} mgr={this.mgr} 
-                data={this.model.data} 
-                handleElementClick={this.handleEditElementProps}
-                ctxMenuActionsMap={this.ctxMenuActionsMap} />
+        <div className="">
+          <div className="row" style={{position: 'absolute', 'width':'100%', height:'100%'}}>
+            <div className="doc docLeft col-4" style={{ padding: 0 }}>
+              <Panel title='Project explorer' className="vars-cexprs-holder" style={{height:'60%'}}>
+                  <ModelExplorer key={this.model.id} mgr={this.mgr} 
+                    data={this.model.data} 
+                    handleElementClick={this.handleEditElementProps}
+                    menuConfig={this.menuConfig}>
+                  </ModelExplorer>
+              </Panel>
+              <Panel title={propertiesPanel.title} className='edit-props-wrap' style={{height:'40%'}}>
+                  {propertiesPanel.content}
+              </Panel>
+            </div> 
+            <div className="doc docRight col-8" style={{ padding: 0 }}>
+              <Panel title="Stage" style={{height:'80%'}}>
+                <Stage key={this.model.id} mgr={this.mgr} 
+                    model={this.model}
+                    data={this.model.data} 
+                    handleElementClick={this.handleEditElementProps}
+                    menuConfig={this.menuConfig}>
+                </Stage>
+              </Panel>
+              <Panel title="Layouts and terminal panel" style={{height:'20%'}}>
+                Layout contents
+              </Panel>
             </div>
-          </Panel>
-          <Panel title={propertiesPanel.title} className='edit-props-wrap'>
-              {propertiesPanel.content}
-          </Panel>
-        </div>  
+          </div>
+        </div>
       </div>
     );
   }

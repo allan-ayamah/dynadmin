@@ -20,9 +20,13 @@ export default class Data {
      * @returns{Object} - json object describng the unit/service  
      */
     get = (dataPath) => {
-        if(dataPath == this.id)
+        if(dataPath === this.id)
             return this.data;  
         return get(this._data, dataPath) 
+    }
+
+    has = (dataPath) => {
+        return this.get(dataPath) ? true : false;
     }
 
      /**

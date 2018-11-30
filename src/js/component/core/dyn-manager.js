@@ -2,20 +2,28 @@ import Data from '../data';
 import { 
     DEFAULT_COMPONENTS_CONFIG, 
     MODEL_CONFIG_NAME, 
-    PAGE_CONFIG_NAME 
+    PAGE_CONFIG_NAME, 
+    FLOW_CONFIG_NAME, 
 } from './default-config';
 
-import {clone} from '../../common/helpers';
+import { clone } from '../../common/helpers';
 
 const DEFAULT_MANAGER_CONFIG = {
     
 }
 
+
+const MIN_COMPONENT_WIDTH = 12;
 export class DynManager {
-    constructor() {
-        this.componentConfigs = {}
-        this.registerConfigs(DEFAULT_COMPONENTS_CONFIG);
+    constructor(opts) {
         this.config = DEFAULT_MANAGER_CONFIG;
+        let components = clone(DEFAULT_COMPONENTS_CONFIG);
+        if(opts.components) {
+            const userComponents = clone(opts.components);
+            components.push(...userComponents);
+        }
+        this.componentConfigs = {}  
+        this.registerConfigs(components);   
     }
     
     /**
@@ -32,7 +40,7 @@ export class DynManager {
         if(!modelId.startsWith(MODEL_CONFIG_NAME)){
             modelId = `${MODEL_CONFIG_NAME}${modelId}`;
         }
-        const modelData = this.initData(modelId, name, this.getConfigByName(MODEL_CONFIG_NAME));
+        const modelData = this.initData(modelId, modelId, name, this.getConfigByName(MODEL_CONFIG_NAME));
         const model = new Data(modelData)
         //Create default page
         this.createElement(model, model.id, PAGE_CONFIG_NAME);
@@ -46,6 +54,11 @@ export class DynManager {
      */
     getConfigByName(name) {
         return this.componentConfigs[name];
+    }
+
+    filterComponents(callback) {
+        const componentNames = Object.keys(this.componentConfigs);
+        componentNames.filter()
     }
 
     /**
@@ -68,11 +81,22 @@ export class DynManager {
             }
         })
 
-        // register default menut items
-        Object.keys(this.componentConfigs).forEach(configName => {
+        // register
+        const componentsName = Object.keys(this.componentConfigs);
+        componentsName.forEach(configName => {
             const config = this.componentConfigs[configName];
-            const defaultAddElements = config.elements;
-            const menuItems = [];
+            let defaultAddElements = [];
+            
+            // add flow
+            if(config.meta.flowSource) {
+                defaultAddElements.push(FLOW_CONFIG_NAME);
+            }
+
+            if(config.meta.elements) {
+                defaultAddElements.push(...config.meta.elements)
+            }
+
+            config.menuItems = [];
             if(defaultAddElements) {
                 //console.log(defaultAddElements)
                 defaultAddElements.forEach(el => {
@@ -88,12 +112,55 @@ export class DynManager {
                         action: 'add',
                         group: 'add',
                     }
-                    menuItems.push(menuItem);
+                    config.menuItems.push(menuItem);
                 });
             }
-            this.componentConfigs[configName].menuItems = menuItems;
-            ///console.log(this.componentConfigs[configName].menuItems)
-        })  
+
+            // Components that can be placed in the current component
+            let childComponents = []
+            // Acceptes groups
+            const acceptsGroups = config.meta.acceptsGroups;
+            if(acceptsGroups) { 
+                console.log(`AcceptsGroups for: ${configName}`)
+                // console.log(acceptsGroups)       
+                const componentsIncluded = componentsName.filter((cnfName) => {
+                    const comp = this.componentConfigs[cnfName];
+                    if(acceptsGroups.includes(comp.meta.group)) {
+                        return cnfName;
+                    }
+                });
+                childComponents.push(...componentsIncluded)
+            }
+
+            // View components
+            if(configName === PAGE_CONFIG_NAME) {
+                const viewOperationCompNames = componentsName.filter((cnfName) => {
+                    const comp = this.componentConfigs[cnfName];
+                    if(comp.meta.viewOnly || comp.meta.viewOperation) {
+                        return cnfName;
+                    }
+                });
+                childComponents.push(...viewOperationCompNames)
+            }
+            
+            if(childComponents) {
+                console.log(`Child components for ${configName}`)
+                //console.log(childComponents)
+                childComponents.forEach(cName => {
+                    const elConfig = this.componentConfigs[cName]
+                    if(elConfig){
+                        config.menuItems.push({
+                            name: elConfig.meta.label,
+                            componentId:  elConfig.meta.id,
+                            group: elConfig.meta.group,
+                            action: 'add'
+                        });
+                    }
+                });
+            }
+        }) 
+
+       // console.log(this.componentConfigs)
     }
 
 
@@ -116,10 +183,10 @@ export class DynManager {
         const nextValPath = `meta.${configName}.nextValue`;
         let nextVal = model.get(nextValPath);
         if(nextVal === undefined) {
-            console.log(`INIT interval for ${configName}`)
+            // console.log(`INIT interval for ${configName}`)
             nextVal = 1;
         }
-        //update component nextValue
+        // update component nextValue
         model.set(nextValPath, nextVal + 1)
         
         const compConf = this.getConfigByName(configName);
@@ -127,14 +194,42 @@ export class DynManager {
             throw new Error(`Element config not found for [${configName}]`) 
         }
         const compMeta = compConf.meta;
-        let assignedId =  `${parentId}.${compMeta.id}${nextVal}`;
+        const localId = `${compMeta.id}${nextVal}`;
+        let assignedId =  `${parentId}.${localId}`;
         if(isParentRoot) {
-            assignedId = `${compMeta.id}${nextVal}`;
+            assignedId = localId;
         }
         const defaultName = `${compMeta.namePrefix}${nextVal}`;
-        const data = this.initData(assignedId, defaultName, compConf);
+        const data = this.initData(assignedId, localId, defaultName, compConf);
         model.set(data.id, data);
         return model.get(assignedId);
+    }
+
+    getElementIO = (model, elementId) => {
+        const element = model.get(elementId);
+        const children = this.findElements(element)
+        const componentConf = this.getConfigByName(element.meta.componentId);
+        const inputGenerator = componentConf.input;
+        let inputResult, outputResult;
+        if(inputGenerator) {
+            try {
+                inputResult = inputGenerator(element, children, this);
+            } catch (err) {
+                console.error(`Error occured while generating input result for ${elementId}`, err);
+            }
+        }
+        const outputGenerator = componentConf.output;
+        if(outputGenerator) {
+            try {
+                outputResult = outputGenerator(element, children, this);
+            } catch (err) {
+                console.error(`Error occured while generating output result for ${elementId}`, err);
+            }
+        }
+        return {
+            input: inputResult || [],
+            output: outputResult || []
+        }
     }
 
     /**
@@ -146,59 +241,102 @@ export class DynManager {
      *                                          after data is initialized
      * @returns {Data}
      */
-    initData(id, name, config) {
+    initData(id, localId, name, config) {
         let data = {};
         Object.keys(config.properties).forEach( propName => {
-            data[propName] = undefined;
+            const prop = config.properties[propName];
+            data[propName] = prop.default;
+            console.log(`${propName} : ${prop.default}`)
         })
         data.id = id;
         data.name = name;
         data.meta = {
+            localId: localId,
             componentId: config.meta.id,
+            top: 0,
+            left: 0,
+            minWidth: config.meta.minWidth
         }
+        /*let width = config.meta.style && config.meta.style.minWidth;
+        if(!width && (config.meta.viewOnly || config.meta.viewOperation)) {
+            // width = MIN_COMPONENT_WIDTH;
+        }*/
         return data;
     }
 
-    findElements(data, callbackfn) {
-        let cb;
-        if(callbackfn) {
-            cb = callbackfn;
-        } else {
-            // call back to return all elements
-            cb = () => true;
+    
+    getComponentPos(model, id) {
+        const component = this.model.get(`${id}`);
+        const { top, left } = component.meta;
+        return {
+            left: component.meta.left,
+            top: component.meta.top,
         }
-        const configName = data.meta.componentId;
-        const componentProps = Object.keys(this.getConfigByName(configName).properties)
-        componentProps.push('id', 'meta')
-        return Object.keys(data)
-        .filter(key => !componentProps.includes(key))
-        .map(compKey => {
-             if (cb(data[compKey])) {
-                return data[compKey];
-             }
-        });
+    }
+    updateComponentPos(model, id, left, top) {
+        model.set(`${id}.meta.left`, left);
+        model.set(`${id}.meta.top`, top);
     }
 
-    isElementViewOnly(data) {
+    findElements(data, callback) {
+        let cb;
+        if(callback) {
+            cb = callback;
+        } else {
+            cb = (d) => { return true }
+        }
+        const configName = data.meta.componentId;
+        const propertyNames = Object.keys(this.getConfigByName(configName).properties)
+        propertyNames.push('id', 'dataKey', 'meta', 'input', 'output')
+
+        const foundKeys = [];
+        let filteredKeys = Object.keys(data).filter(key => !propertyNames.includes(key));
+        filteredKeys = filteredKeys.sort();
+        filteredKeys.forEach(compKey => {
+             if (cb(data[compKey])) {
+                foundKeys.push(data[compKey]);
+             }
+        });
+
+        return foundKeys;
+    }
+
+    /**
+     * Returns true if the element can be placed on stage
+     * @param {Element} element --the element
+     */
+    isStageElement(element) {
+        const configName = element.meta.componentId;
+        const compConfigMeta = this.getConfigByName(configName).meta
+        return (
+            compConfigMeta.viewOnly 
+            || compConfigMeta.viewOperation 
+            || compConfigMeta.operationOnly
+            || compConfigMeta.id === PAGE_CONFIG_NAME
+        )
+    }
+
+
+    isViewOnlyElement(data) {
         const configName = data.meta.componentId;
         return this.getConfigByName(configName).meta.viewOnly
     }
 
-    isElementViewOperation(data) {
+    isViewOperationElement(data) {
         const configName = data.meta.componentId;
         return this.getConfigByName(configName).meta.viewOperation
     }
 
-    isElementOperationOnly(data) {
+    isOperationOnlyElement(data) {
         const configName = data.meta.componentId;
         return this.getConfigByName(configName).meta.operationOnly
     }
-
 
     elementMenuItems(element) {
         const configName = element.meta.componentId;
         return clone(this.getConfigByName(configName).menuItems);
     }
+
 }
 
 export default DynManager;

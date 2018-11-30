@@ -7,7 +7,8 @@ export const modelConfig = {
         id: MODEL_CONFIG_NAME,
         namePrefix: 'Dynamic form',
         label: 'Dynamic form',
-        icon: 'model'
+        icon: 'model',
+        elements: [PAGE_CONFIG_NAME]
     },
     properties: {
         name: {
@@ -15,6 +16,5 @@ export const modelConfig = {
             name: 'Name',
         },
     },
-    elements: [PAGE_CONFIG_NAME]
 };
 export default modelConfig;

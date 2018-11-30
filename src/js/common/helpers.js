@@ -8,14 +8,14 @@ export const clone = cloneDeep
 
 export const describeId = (childId) => {
     const parts = childId.split('.');
-    if(parts.length == 1) {
+    if(parts.length === 1) {
         return {
             parentId: null,
             childId: childId,
             localId: childId
         };
     }
-
+    
     const localId = parts.length > 1 ? parts[parts.length - 1] : parts[0];
     const parentId =  childId.split(`.${localId}`)[0];
     return {
