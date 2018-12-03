@@ -87,8 +87,18 @@ class DynAdmin extends Component {
     this.model = this.mgr.createModel(1, 'Dynamic model 3');
 
     const form1 = this.mgr.createElement(this.model, 'page1', 'form')
+    this.mgr.updateComponentPos(this.model, form1.id, {
+      top: 40,
+      left: 30
+    });
     const field1 = this.mgr.createElement(this.model, 'page1.form1', 'fld')
     const selectionField1 = this.mgr.createElement(this.model, 'page1.form1', 'sfld')
+
+    const query1 = this.mgr.createElement(this.model, 'page1', 'query');
+    this.mgr.updateComponentPos(this.model, query1.id, {
+      top: 70,
+      left: 270
+    });
 
     //console.log(this.model.data)
     const var1 = this.mgr.createElement(this.model, 'page1', 'var')

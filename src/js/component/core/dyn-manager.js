@@ -44,6 +44,7 @@ export class DynManager {
         const model = new Data(modelData)
         //Create default page
         this.createElement(model, model.id, PAGE_CONFIG_NAME);
+        console.log("MODEL", clone(model.data))
         return model;
     }
 
@@ -246,7 +247,7 @@ export class DynManager {
         Object.keys(config.properties).forEach( propName => {
             const prop = config.properties[propName];
             data[propName] = prop.default;
-            console.log(`${propName} : ${prop.default}`)
+            // console.log(`${propName} : ${prop.default}`)
         })
         data.id = id;
         data.name = name;
@@ -273,9 +274,13 @@ export class DynManager {
             top: component.meta.top,
         }
     }
-    updateComponentPos(model, id, left, top) {
-        model.set(`${id}.meta.left`, left);
-        model.set(`${id}.meta.top`, top);
+
+
+    updateComponentPos(model, id, eventData) {
+        model.set(`${id}.meta.left`, eventData.left);
+        model.set(`${id}.meta.top`, eventData.top);
+        model.set(`${id}.meta.minWidth`, eventData.minWidth);
+        model.set(`${id}.meta.minHeight`, eventData.minHeight);
     }
 
     findElements(data, callback) {

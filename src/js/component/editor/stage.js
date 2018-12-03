@@ -1,7 +1,8 @@
 
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { makeStageItem } from './stage-item';
+import { StageItemEvent, makeStageItem } from './stage-item';
+import { clone } from '../../common/helpers'
 
 
 const StageAction = {
@@ -12,6 +13,17 @@ const StageAction = {
 const STAGE_ITEM_ID_PREFIX = 'dyn_stage_i_';
 const STAGE_CANVAS_REF_NAME = 'stage_canvas';
 
+const CLICK = {
+    LEFT: 1,
+    RIGHT: 3,
+}
+
+
+const CONTAINER_HEADER_HEIGHT = 37;
+
+const CONTAINER_OFFSET_Y = 20;
+const CONTAINER_OFFSET_X = 20;
+
 export class Stage extends React.Component {
     constructor(props) {
         super(props);
@@ -19,112 +31,228 @@ export class Stage extends React.Component {
         this.model = this.props.model;
 
         this.ref = React.createRef(STAGE_CANVAS_REF_NAME);
-        this.elementsRef = {};
+        this.stageItems = {};
         this.state = {
             stageAction: StageAction.NONE,
-            focusedElementId: null,
+            stageItem: null,
             isMouseDown: false,
             isMove: false,
             mouseDownPosX: 0,
             mouseDownPosY: 0,
-            moveDeltaX: 0,
-            moveDeltaY: 0,
         }
     }
 
     componentDidMount() {
         console.log(`${this.ref.current.id} Stage mounted`, this.ref.current)
-        console.log(this.elementsRef)
+        console.log(this.stageItems)
     }
 
     componentWillUnmount() {
-        delete this.elementsRef;
+        delete this.stageItems;
     }
 
     shouldComponentUpdate(nextProps, nextState) {
-        if(nextState.stageAction !== StageAction.NONE) {
-            switch(nextState.stageAction) {
-                case StageAction.MOVE: {
-                    if(nextState.focusedElementId
-                        && ((nextState.focusedElementId === this.state.focusedElementId))
-                        ) {
-                            console.log(`dont update, ${this.state.focusedElementId} is beign dragged`)
-                            return false;
-                    }
-                    break;
-                }
+
+        return false;
+        if(nextState.stageAction === StageAction.NONE) {
+            console.log('RESET')
+            return false;
+        }
+        
+        switch(nextState.stageAction) {
+            case StageAction.MOVE: {
+                console.log(`dont update, ${this.state.stageItem} `)
+                return false;
             }
+            default:
+                break;
         }
         return true;
     }
 
     componentDidUpdate(prevProps, prevState) {
-        console.log(`componentDidUpdate ${prevState.focusedElementId} ${this.state.focusedElementId}`)
+        console.log(`componentDidUpdate ${prevState.stageItemId} ${this.state.stageItemId}`)
     }
 
-    handleMouseDown = (e, srcElementId) => {
+
+    handleStageItemNotification(id, event, data, prevState) {
+        console.log(`Incoming notification from ${id}, eventType: ${event}`, data)
+
+        if([StageItemEvent.MOVED, StageItemEvent.RESIZE].includes(event)) {
+            this.mgr.updateComponentPos(this.model, id, data);
+            if(data.eventData) {
+                const childrenUpdate = data.eventData.childrenUpdate;
+                if(childrenUpdate) {
+                    childrenUpdate.forEach(chUpdate => {
+                        const childId = chUpdate.who;
+                        const childRef = this.stageItems[childId].ref;
+                        console.log(chUpdate)
+                        alert(`Update child ${childId}, DATA : ${chUpdate.data.top}, parent: ${this.stageItems[childId].parentRef.current.getTop()}`)
+                        childRef.current.handleEvent(chUpdate.event, chUpdate.data);
+                    })
+                }
+            }
+            const stageItem = this.stageItems[id];
+            const parentRef = stageItem.parentRef;
+            if(parentRef) {
+                const updateData = {
+                    childId: id,
+                    prevState: prevState,
+                    currState: data,
+                }
+                parentRef.current.handleEvent(StageItemEvent.CHILD_MOVED, updateData);
+            } else {
+                // ROOT
+                let currY = stageItem.ref.current.getTop();
+                let currX = stageItem.ref.current.getLeft()
+                const reset = {
+                    top: currX,
+                    left: currY
+                }
+
+                if(currX < 0) {
+                    reset.left = 0;
+                }
+                if(currY < 0) {
+                    reset.top = 0; 
+                }
+                if(currY !== reset.top || currX !== reset.left) {
+                    stageItem.ref.current.handleEvent(StageItemEvent.UPDATE_COORDINATES, reset);
+                }
+            }
+        }
+    }
+
+    handleMouseDown = (e, id) => {
         e.stopPropagation();
-        console.log(`StageItem ${srcElementId} mouse down`)
-        const x = e.clientX;
-        const y = e.clientY;
-        this.setState({
-            stageAction: StageAction.MOVE,
-            focusedElementId: srcElementId,
-            isMouseDown: true,
-            isMove: false,
-            mouseDownPosX: x,
-            mouseDownPosY: y,
-            moveDeltaX: 0,
-            moveDeltaY: 0,
-        }, () => this.props.handleElementClick(this.state.focusedElementId));
+        console.log(`StageItem ${id} mouse down ${e.which}`)
+        
+        if(this.state.stageAction == StageAction.NONE) {
+            const stageItem = this.stageItems[id];
+            this.setState(
+                {
+                    stageAction: StageAction.MOVE,
+                    stageItem: stageItem,
+                    isMouseDown: true,
+                    mouseDownPosX: e.clientX,
+                    mouseDownPosY: e.clientY,
+                    isMove: false,
+                }
+            );
+        } 
     }
 
     handleMouseMove = (e, targetId) => {
         e.stopPropagation();
-        const currentId = this.state.focusedElementId
-        
-        if(this.state.isMouseDown && currentId) {
-            console.log(`Stage ${targetId} - ${currentId} mouse move ${e.clientX - this.state.mouseDownPosX}`)
-            this.setState({
-                isMove: true,
-                moveDeltaX: e.clientX - this.state.mouseDownPosX,
-                moveDeltaY: e.clientY - this.state.mouseDownPosY
-            });
+        if(this.state.stageAction === StageAction.MOVE) {
+            if(this.state.isMouseDown && !this.state.isMove) {
+                console.log('call drag')
+                this.setState({
+                    isMove: true,
+                })
+            }
+            
         }
-        
     }
 
     handleMouseUp = (e, targetId) => {
         e.stopPropagation();
         const currentAction = this.state.stageAction;
-        if(currentAction !== StageAction.NONE) {
-            const id = this.state.focusedElementId;
-            const stageItemRef = this.elementsRef[id].current;
+        if(currentAction !== StageAction.NONE) {  
             switch(currentAction) {
                 case StageAction.MOVE: {
-                    if(!this.state.isMouseDown) {
+                    if(this.state.isMouseDown && this.state.isMove) {
+                        console.log('CALL DRAG END')
+                        const moveDeltaX = e.clientX - this.state.mouseDownPosX;
+                        const moveDeltaY = e.clientY - this.state.mouseDownPosY;
+                        const stageItem = this.state.stageItem.ref.current;
+                        const expectedNextCoord = nextCoordinates(stageItem.getLeft(), stageItem.getTop(), moveDeltaX, moveDeltaY);
+                        this.handleStageItemMove(stageItem.props.id, expectedNextCoord)
                         this.cleanup(StageAction.MOVE)
-                    } else {
-                        console.log(`Stage ${targetId} mouse up`)
-                        if(this.state.moveDeltaX 
-                            && this.state.moveDeltaY) {
-                            const left = stageItemRef.getLeft() + this.state.moveDeltaX;
-                            const top = stageItemRef.getTop() + + this.state.moveDeltaY;
-                            stageItemRef.setState(
-                                { 
-                                    top: top, 
-                                    left: left
-                                },
-                                () => this.cleanup(StageAction.MOVE) 
-                            );
-                        } else {
-                            this.cleanup(StageAction.MOVE)
-                        }
                     }
                     break;
                 }
             }
         }
+    }
+
+    /**
+     * 
+     * @todo resize container when it's children move innerwards leaving
+     * the container too big
+     */
+    handleStageItemMove = (childId, nextCoord) => {
+        const childRef = this.stageItems[childId].ref.current;
+        // Root ELement(Model)
+        if(this.stageItems[childId].parentRef === null ||
+            this.stageItems[childId].parentRef === undefined) {
+            return childRef.handleEvent(StageItemEvent.UPDATE_POSITION, nextCoord);
+        }
+
+        const childRect = childRef.getRect();
+        const actualChildNextCoord = Object.assign(clone(nextCoord), {
+            minHeight: nextCoord.minHeight || childRef.getMinHeight() || childRect.height,
+            minWidth: nextCoord.minWidth || childRef.getMinWidth() || childRect.width,
+        });
+
+        const parentRef = this.stageItems[childId].parentRef.current;
+        const parentRect = parentRef.getRect();
+        const parentNewCoord = {
+            top: parentRef.getTop(),
+            left: parentRef.getLeft(),
+            minHeight: parentRef.getMinHeight() || parentRect.height,
+            minWidth: parentRef.getMinWidth() || parentRect.width,
+        };
+
+        let parentNeedsToShift = false;
+        // check y overflow negative
+        if(nextCoord.top < 0) {
+            parentNewCoord.top-= Math.abs(nextCoord.top);
+            actualChildNextCoord.top = 0;
+            parentNeedsToShift = true;
+        } 
+
+        if(nextCoord.left < 0) {
+            parentNeedsToShift = true;
+            parentNewCoord.left-= Math.abs(nextCoord.left);
+            actualChildNextCoord.left = 0;
+        }
+        const expectedH = actualChildNextCoord.minHeight + Math.abs(actualChildNextCoord.top) 
+                        + CONTAINER_OFFSET_Y + CONTAINER_HEADER_HEIGHT;
+        // check y overflow positive
+        if(parentNewCoord.minHeight < expectedH) {
+            parentNeedsToShift = true;
+            parentNewCoord.minHeight = expectedH;
+        } 
+
+        const expectedW = Math.abs(actualChildNextCoord.left) + actualChildNextCoord.minWidth  + CONTAINER_OFFSET_X;
+        // check x overflow positive
+        if(parentNewCoord.minWidth < expectedW) {
+            parentNeedsToShift = true;
+            parentNewCoord.minWidth = expectedW;
+        }
+
+        childRef.handleEvent(StageItemEvent.UPDATE_POSITION, actualChildNextCoord);
+        if(parentNeedsToShift){
+            this.handleStageItemMove(parentRef.props.id, parentNewCoord);
+        }
+    }
+
+    handleDragBegin = (e, targetId) => {
+        //alert("Drag begin")
+        return this.handleMouseMove(e, targetId);
+    }
+
+    handleDrag = (e, targetId) => {
+        //alert(`DRAGGIN ${targetId}`)
+        return this.handleMouseMove(e, targetId);   
+    }
+
+    
+    handleDragEnd = (e, targetId) => {
+        console.log(targetId, this.state)
+        //alert("Drag end")
+        return this.handleMouseUp(e, targetId);   
     }
 
 
@@ -132,40 +260,17 @@ export class Stage extends React.Component {
         switch(action) {
             case StageAction.MOVE:{
                 this.setState({
-                    focusedElementId: null,
+                    stageAction: StageAction.NONE,
+                    stageItem: null,
                     isMouseDown: false,
-                    isMove: false,
-                    mouseDownPosX: 0,
-                    mouseDownPosY: 0,
-                    moveDeltaX: 0,
-                    moveDeltaY: 0,
                 });
                 break;
             }
         }
     }
 
-
-
-
     handlePosChange = (id, left, top) => {
         this.mgr.updateComponentPos(this.model, id, left, top);
-    }
-
-    resizeParentOf = (childId) => {
-        const childComponent = this.model.get(childId);
-        const { top, left, width, height } = childComponent.meta;
-        const parent = this.model.parent(childId);
-        const parentMeta = parent.meta;
-
-        let  parentWidth = parentMeta.width;
-        if(left > parentMeta.left) {
-            parentWidth = left + width;
-        }
-        const ancestor = this.model.parent(parent.id);
-        if(ancestor.id && ancestor.id != parent.id){
-            this.resizeParentOf(parent.id);
-        }
     }
 
 
@@ -179,18 +284,18 @@ export class Stage extends React.Component {
         const tree = [];
         if(data.id) {
             const children = this.mgr.findElements(data, (childData) => {
+                console.log(`Check stage element for ${data.id}`, this.props.model)
                 return mgr.isStageElement(childData)
             });
-
+            
             //console.log(children)
             if(children.length == 0) {
-                const singleItem = this.treeItem(data);
-                tree.push(singleItem);
+                tree.push(this.treeItem(data));
             } else {
                 const nextLevel = currLevel + 1;
                 const childItems = [];
-                children.forEach( childEl => {
-                    childItems.push(this.process(childEl, nextLevel))
+                children.forEach( childEl => {  
+                    childItems.push(...this.process(childEl, nextLevel))
                 });
                 const itemWithChildrenContents = this.treeItem(data, childItems);
                 tree.push(itemWithChildrenContents);
@@ -203,14 +308,11 @@ export class Stage extends React.Component {
     treeItem(data, children) {
         const id = data.id;
         const name = data.name;
-        
-        const isContainerComponent = children ? true : false;
-        const widgetContent = isContainerComponent ? children : 'Empty'
+
         const widgetProps = {
             key: id,
             id,
             title: name,
-            content: widgetContent,
         }
         
         const style = { 
@@ -219,35 +321,94 @@ export class Stage extends React.Component {
             left: data.meta.left,
             minWidth: data.meta.minWidth,
         } 
-        const StageItem = makeStageItem(ElementWidget, style);
-        this.elementsRef[id] = React.createRef(`${STAGE_ITEM_ID_PREFIX}${id}`);
-       
+
+        const StageItem = makeStageItem(
+            ElementWidget, 
+            {
+                onMouseDown: (e) => this.handleMouseDown(e, id),
+                onMouseMove: (e) => this.handleMouseMove(e, id),
+                onMouseUp: (e) => this.handleMouseUp(e, id),
+                onDragBegin: (e) => this.handleDragBegin(e, id),
+                onDrag: (e) => this.handleDrag(e, id),
+                onDragEnd: (e) => this.handleDragEnd(e, id),
+                draggable:true,
+            }
+        );
+        
+        const isContainerItem = children ? true : false;
+        const content = isContainerItem ? children : 'Component';
+        const itemRef = React.createRef();
         const stageItem = (
             <StageItem 
-                ref={this.elementsRef[id]}
+                ref={itemRef}
+                myRef={itemRef}
                 id={id}
+                key={id}
+                style={style}
+                isContainer={isContainerItem}
                 itemProps={widgetProps}
-                handlePosChange={(left, top) => this.handlePosChange(id, left, top)}
-                handleMouseDown={(e) => this.handleMouseDown(e, id)}
-                handleMouseMove={(e) => this.handleMouseMove(e, id)}
-                handleMouseUp={(e) => this.handleMouseUp(e, id)}
-            />
+                notifyEvent={(evt, evtData) => this.handleStageItemNotification(id, evt, evtData)}
+            >
+                {content}
+            </StageItem>
         );
+        this.stageItems[id] = {
+            ref: stageItem.ref,
+            parentRef: null,
+        }
+        if(isContainerItem) {
+            children.forEach(childStItem => {
+                const chStageId = childStItem.props.id;
+                // console.log(`${chStageId} is child of ${stageItem.props.id}`, this.stageItems[id] )
+                this.stageItems[chStageId].parentRef =  stageItem.ref;
+            })
+        }
         return stageItem;
     }
 
     
     render() {
-        const modelData = this.props.data;
+        const modelData = this.props.model.data;
         const tree = this.createTree(modelData)
         return (
             <div style={ {position: 'absolute', width:'200%', height:'200%' } }
                 ref={this.ref} 
                 onMouseMove={(e) => this.handleMouseMove(e, 'STAGE')}
-                onMouseUp={ (e) => this.handleMouseUp(e, 'STAGE')}>
+                onMouseUp={(e) => this.handleMouseUp(e, 'STAGE')}
+                onDragBegin={(e) => this.handleDragBegin(e, 'STAGE')}
+                onDrag={(e) => this.handleDrag(e, 'STAGE')}
+                onDragEnd={ (e) => this.handleDragEnd(e, 'STAGE')}
+                draggable={true}
+            >
                 {tree}
             </div>
         );
+    }
+}
+
+
+function nextCoordinates(currX, currY, mouseDeltaX, mouseDeltaY){
+    let topBefore = currY;
+    let leftBefore = currX;
+
+    let newTop, newLeft;
+    // Move up
+    if(mouseDeltaY < 0) {
+        newTop = topBefore - Math.abs(mouseDeltaY);
+    } else {
+        newTop = topBefore + Math.abs(mouseDeltaY)
+    }
+
+    //Moved left
+    if(mouseDeltaX < 0 ) {
+        newLeft = leftBefore - Math.abs(mouseDeltaX); 
+    } else {
+        newLeft = leftBefore + Math.abs(mouseDeltaX); 
+    }
+
+    return {
+        top: newTop,
+        left: newLeft,
     }
 }
 
@@ -261,7 +422,7 @@ class ElementWidget extends React.Component {
             wrapClassName.push('selected');
         }
         return (
-            <div className={wrapClassName.join(' ')}>
+            <div style={props.style} className={wrapClassName.join(' ')}>
                 <div className='widget-header card-header' style={{ padding: '6px' }}>
                     <header>
                         <div className="widget-name">{this.props.title}</div>
