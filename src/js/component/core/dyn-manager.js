@@ -265,6 +265,18 @@ export class DynManager {
         return data;
     }
 
+
+    parentIdOf = (model, childId) => {
+        const data = model.data
+        if(childId === data.id) return childId;
+        const parts = childId.split('.');
+        // unit is the last part of the data key
+        const assignedId = parts.length > 1 ? parts[parts.length - 1] : parts[0];
+        const parentId = childId.split(`.${assignedId}`)[0];
+        console.log("resolve parent", parentId, parts, assignedId)
+        return parentId;
+    }
+
     
     getComponentPos(model, id) {
         const component = this.model.get(`${id}`);
@@ -318,6 +330,32 @@ export class DynManager {
             || compConfigMeta.viewOperation 
             || compConfigMeta.operationOnly
             || compConfigMeta.id === PAGE_CONFIG_NAME
+            || compConfigMeta.id === FLOW_CONFIG_NAME
+        )
+    }
+
+    isConfigFlowType = (configName) =>{
+        return (
+            configName === FLOW_CONFIG_NAME
+        )
+    }
+
+    isFlowElement = (element) => {
+        const configName = this.getConfigName(element)
+        const compConfigMeta = this.getConfigByName(configName).meta
+        return this.isConfigFlowType(compConfigMeta.id);
+    }
+
+    getConfigName(element) {
+        return element.meta.componentId;
+    }
+
+    isContainerElement (element) {
+        const configName = element.meta.componentId;
+        const compConfigMeta = this.getConfigByName(configName).meta
+        return (
+            compConfigMeta.id === PAGE_CONFIG_NAME
+            || compConfigMeta.id === MODEL_CONFIG_NAME
         )
     }
 

@@ -1,20 +1,11 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { clone } from '../../common/helpers'
+import { clone } from '../../../common/helpers'
 
-const ContainerMovement = {
-    UP: 'U',
-    DOWN: 'D',
-    LEFT: 'L',
-    RIGHT: 'R',
-    GROW_TALL: 'T',
-    GROW_SHORT: 'S',
-    GROW_FAT: 'F',
-    GROW_LEAN: 'LL'
-}
 
 export const StageItemEvent = {
     NONE: 'RESTORE',
+    READY: 'READY',
     FOCUS: 'FOCUS',
     DRAG_BEGIN: 'DRAG_BEGIN',
     DRAG: 'DRAG',
@@ -22,8 +13,8 @@ export const StageItemEvent = {
     MOVED: 'MVD',
     CHILD_MOVED: 'CH_MVD',
     RESIZE : 'RESIZE',
-    UPDATE_POSITION: 'U_COORD'
-    
+    UPDATE_POSITION: 'U_COORD',
+    UN_MOUNTING: 'UM',
 }
 
 const CONTAINER_HEADER_HEIGHT = 37;
@@ -45,16 +36,42 @@ export function makeStageItem(Item, eventListeners) {
             this.myRef = React.createRef();
             this.initialStyle = this.props.style;
             this.state = {
+                children: this.props.children ? this.props.children : [],
+                data: this.props.data,
                 event: StageItemEvent.NONE,
                 eventData: null,
                 selected: this.props.selected,
                 initialStyle: this.initialStyle,
+                name: this.props.itemProps.name,
                 top: this.initialStyle.top,
                 left: this.initialStyle.left,
                 minWidth: this.initialStyle.minWidth, 
                 minHeight: this.initialStyle.minHeight,
             }
         }
+
+
+        init(data) {
+            
+        }
+
+        /**
+         * Adds new children
+         * @param {Array[StageItem]} children 
+         */
+        addChildren(children) {
+            const newChildren = this.state.children;
+            if(Array.isArray(children)) {
+                newChildren.push(...children)
+            } else {
+                newChildren.push(children)
+            }
+
+            this.setState({
+                children: newChildren
+            })
+        }
+
 
 
         handleEvent = (stageItemEvent, data, callback = () => {}) => {
@@ -115,12 +132,13 @@ export function makeStageItem(Item, eventListeners) {
 
 
         resize = (childId) => {
-           
-            if(!this.props.isContainer) return;
+            const children = this.state.children
+            if(!children.length) return;
+            return;
             
             // find child wiht max top
             // console.log(this.props.children)
-            const children = this.props.children
+           
             const first = children[0].ref.current;
             let topMostChild, rightMostChild, bottomMostChild, leftMostChild;
             topMostChild = rightMostChild = bottomMostChild = leftMostChild = first;
@@ -195,8 +213,13 @@ export function makeStageItem(Item, eventListeners) {
         }
 
         componentDidMount() {
-            console.log(`Stage item ${this.props.id} did mount`)
+            alert(`StageItem[${this.props.id}] is mounted`)
             this.resize();
+        }
+
+        componentWillUnmount() {
+            alert(`StageItem[${this.props.id}] un mounting`)
+            //this.props.notifyEvent
         }
 
         shouldComponentUpdate(nextProps, nextState) {
@@ -265,15 +288,19 @@ export function makeStageItem(Item, eventListeners) {
 
         render() {
             const itemProps  =  this.props.itemProps;
-            itemProps.content = this.props.children;
+            itemProps.name = this.state.data.name;
+            itemProps.data = this.state.data;
+            itemProps.children =  this.state.children;
+            itemProps.event = this.state.event;
 
             let itemStyle = {}
-            if(this.props.isContainer) {
-                itemStyle = { 
+            if(this.state.children.length) {
+                itemStyle = {
                     minWidth: this.state.minWidth, 
                     minHeight: this.state.minHeight
                 }
             }
+            
             const style = Object.assign(clone(this.initialStyle), { 
                 top: this.state.top, 
                 left: this.state.left 
@@ -297,4 +324,3 @@ export function makeStageItem(Item, eventListeners) {
     }
     return StageItem;
 }
-

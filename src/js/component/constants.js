@@ -1,3 +1,12 @@
+export const Action = {
+    Load: 'load',
+    Add: 'ad',
+    EditProps: 'ep',
+    Remove: 'rm',
+    Copy: 'cp',
+    Paste: 'ps'
+}
+
 export const PREDICATES = {
     label: ['Equal', 'Greater or Equal', 'Greater Than', 'Less or Equal', 'Less Than', 'Not Equal'],
     value: ['eq', 'ge', 'gt', 'le', 'lt', 'ne'],

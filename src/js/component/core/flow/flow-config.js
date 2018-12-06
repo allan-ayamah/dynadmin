@@ -1,6 +1,6 @@
 import { FLOW_TYPE } from '../../constants';
 
-export const FLOW_CONFIG_NAME = 'lnk';
+export const FLOW_CONFIG_NAME = 'flow';
 
 export const flowConfig = {
     meta: {

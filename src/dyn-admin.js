@@ -6,6 +6,7 @@ import ModelExplorer from './js/component/core/model-explorer';
 import { Stage } from './js/component/editor/index';
 import { describeId } from './js/common/helpers'
 import { componentsConfig, componentGroups, validationRules } from './js/components-config'
+import { Action } from './js/component/constants'  
 
 import './css/react-contextmenu.css';
 import './css/dyn-admin.css';
@@ -100,15 +101,17 @@ class DynAdmin extends Component {
       left: 270
     });
 
+    const flow1 = this.mgr.createElement(this.model, 'page1.form1', 'flow')
+    flow1.source=form1.id;
+    flow1.target=query1.id;
     //console.log(this.model.data)
     const var1 = this.mgr.createElement(this.model, 'page1', 'var')
     const var2 = this.mgr.createElement(this.model, 'page1', 'var')
 
     this.state = {
-      editProperties: { 
-        focus: false, 
-        contentProps: {}
-      }
+      action: Action.Load,
+      actionData: null,
+      propsPanelData: null,
     };
 
     this.handleCreateElement = this.handleCreateElement.bind(this);
@@ -150,23 +153,28 @@ class DynAdmin extends Component {
     }
 
     this.setState({
-        editProperties: { 
-          focus:true, 
-          contentProps: editProps
-        }
+        action: Action.EditProps,
+        actionData: editProps,
+        propsPanelData: {
+          title: editProps.data.name,
+          props: editProps,
+        },
     });
   }
 
   
   render() {    
-    const editProperties = this.state.editProperties
     let propertiesPanel= {}
-    if(editProperties.focus) {
-      propertiesPanel.title = `${editProperties.contentProps.data.name}`
-      propertiesPanel.content = <EditProperties {...editProperties.contentProps}/>
+    if(this.state.propsPanelData) {
+      propertiesPanel = {
+        title: `${this.state.propsPanelData.title}`,
+        content: <EditProperties {...this.state.propsPanelData.props}/>
+      }
     } else {
-      propertiesPanel.title = `Properties`
-      propertiesPanel.content = 'No element selected'
+      propertiesPanel = {
+        title: `Properties`,
+        content: `No element selected`,
+      }
     }
 
     
@@ -178,19 +186,27 @@ class DynAdmin extends Component {
           <div className="row" style={{position: 'absolute', 'width':'100%', height:'100%'}}>
             <div className="doc docLeft col-4" style={{ padding: 0 }}>
               <Panel title='Project explorer' className="vars-cexprs-holder" style={{height:'60%'}}>
-                  <ModelExplorer key={this.model.id} mgr={this.mgr} 
+                  <ModelExplorer key={this.model.id} 
+                    action={this.state.action}
+                    actionData={this.state.actionData}
+                    mgr={this.mgr} 
                     data={this.model.data} 
                     handleElementClick={this.handleEditElementProps}
                     menuConfig={this.menuConfig}>
                   </ModelExplorer>
               </Panel>
-              <Panel title={propertiesPanel.title} className='edit-props-wrap' style={{height:'40%'}}>
-                  {propertiesPanel.content}
+              <Panel title={propertiesPanel.title} 
+                    className='edit-props-wrap' 
+                    style={{height:'40%'}}>
+                {propertiesPanel.content}
               </Panel>
             </div> 
             <div className="doc docRight col-8" style={{ padding: 0 }}>
               <Panel title="Stage" style={{height:'80%'}}>
-                <Stage key={this.model.id} mgr={this.mgr} 
+                <Stage key={this.model.id} 
+                    mgr={this.mgr}
+                    action={this.state.action}
+                    actionData={this.state.actionData} 
                     model={this.model}
                     data={this.model.data} 
                     handleElementClick={this.handleEditElementProps}

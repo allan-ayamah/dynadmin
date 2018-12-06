@@ -1,13 +1,32 @@
 
 import React from 'react';
-import ReactDOM from 'react-dom';
-import { StageItemEvent, makeStageItem } from './stage-item';
 import { clone } from '../../common/helpers'
+import { Action as ElementAction} from '../../component/constants'  
+import { 
+    MODEL_CONFIG_NAME, 
+    PAGE_CONFIG_NAME, 
+    FLOW_CONFIG_NAME 
+} from '../core/default-config';
 
+import { StageItemEvent, makeStageItem } from './stage-item/stage-item';
+import { StageItemType } from './stage-item/index'
 
-const StageAction = {
+const StageAction = Object.assign(ElementAction, {
     MOVE: 'move',
     NONE: '',
+})
+
+function getStageItemTypeByConfigName(componentConfigName){
+    switch(componentConfigName) {
+        case MODEL_CONFIG_NAME: 
+            return StageItemType.ContainerType;
+        case PAGE_CONFIG_NAME: 
+            return StageItemType.ContainerType
+        case FLOW_CONFIG_NAME:
+            return StageItemType.FlowType
+        default:
+            return StageItemType.ComponentType
+    }
 }
 
 const STAGE_ITEM_ID_PREFIX = 'dyn_stage_i_';
@@ -32,6 +51,7 @@ export class Stage extends React.Component {
 
         this.ref = React.createRef(STAGE_CANVAS_REF_NAME);
         this.stageItems = {};
+        this.flows = {}
         this.state = {
             stageAction: StageAction.NONE,
             stageItem: null,
@@ -44,34 +64,77 @@ export class Stage extends React.Component {
 
     componentDidMount() {
         console.log(`${this.ref.current.id} Stage mounted`, this.ref.current)
-        console.log(this.stageItems)
+        Object.keys(this.stageItems).forEach(id => {
+            if(!this.stageItems[id].ref.current) {
+                alert(`${id} My reference is NULL`)
+            }
+        })
+        setTimeout(() => {
+            const flowIds = Object.keys(this.flows);
+            flowIds.forEach( id => {
+                const flowData = this.model.get(id);
+                const srcStageItem = this.stageItems[flowData.source].ref.current;
+                const trgStageItem = this.stageItems[flowData.target].ref.current;
+                const srcRect = srcStageItem.getRect();
+                alert(`Source RECT ${srcRect.y} ${srcRect.top} ${srcRect.x} ${srcRect.left}`)
+                const trgRect =  trgStageItem.getRect();
+                this.stageItems[id].ref.current.connect(srcRect, trgRect);
+            })
+        }, 100)
     }
 
     componentWillUnmount() {
+        alert("Stage is unmounting")
         delete this.stageItems;
     }
 
     shouldComponentUpdate(nextProps, nextState) {
-
-        return false;
-        if(nextState.stageAction === StageAction.NONE) {
-            console.log('RESET')
+        const appAction = nextProps.action;
+        if(appAction) {
+            // alert(`App action: ${appAction}`)
+            const actionData = nextProps.actionData;
+            
+            switch(appAction) {
+                case StageAction.EditProps: {
+                    const dataId = actionData.id;
+                    const data = actionData.data
+                    let stageItem = this.stageItems[dataId];
+                    alert(`Action ${actionData} of ${dataId}`)
+                    if(stageItem) {
+                        // alert(`Edit ${dataId}`)
+                        stageItem.ref.current.setState({
+                            name: actionData.data.name,
+                        })
+                    } else {
+                        // Add new Element
+                        // alert("NEw")
+                        if(this.props.mgr.isStageElement(data)) {
+                            const dataId = actionData.id;
+                            const parentId = this.mgr.parentIdOf(this.props.model, dataId);
+                            const itemRef = this.getStageItemRef(dataId, parentId);
+                            const stageItem = this.createStageItem(data, itemRef);
+                            itemRef.parentRef.current.addChildren(stageItem)
+                        }
+                    }
+                    break;
+                }
+                default:
+                break;
+            }
+            // alert("Component should not update")
             return false;
         }
         
-        switch(nextState.stageAction) {
-            case StageAction.MOVE: {
-                console.log(`dont update, ${this.state.stageItem} `)
-                return false;
-            }
-            default:
-                break;
+        return false;
+        if([StageAction.MOVE].includes(nextState.stageAction)) {
+           
+            return false;
         }
         return true;
     }
 
     componentDidUpdate(prevProps, prevState) {
-        console.log(`componentDidUpdate ${prevState.stageItemId} ${this.state.stageItemId}`)
+        alert(`componentDidUpdate ${prevState.stageItemId} ${this.state.stageItemId}`)
     }
 
 
@@ -125,9 +188,10 @@ export class Stage extends React.Component {
 
     handleMouseDown = (e, id) => {
         e.stopPropagation();
-        console.log(`StageItem ${id} mouse down ${e.which}`)
+        console.log(`StageItem ${id} mouse down`)
         
         if(this.state.stageAction == StageAction.NONE) {
+            console.log(`StageItem ${id} HAS FOCUS`)
             const stageItem = this.stageItems[id];
             this.setState(
                 {
@@ -137,7 +201,8 @@ export class Stage extends React.Component {
                     mouseDownPosX: e.clientX,
                     mouseDownPosY: e.clientY,
                     isMove: false,
-                }
+                },
+                () => {} //this.props.handleElementClick(id)
             );
         } 
     }
@@ -263,6 +328,7 @@ export class Stage extends React.Component {
                     stageAction: StageAction.NONE,
                     stageItem: null,
                     isMouseDown: false,
+                    isMove: false,
                 });
                 break;
             }
@@ -274,45 +340,66 @@ export class Stage extends React.Component {
     }
 
 
-    createTree(modelData){
-        return this.process(modelData, 1)
+    createTree(modelData) {
+        return this.process(modelData, 1, null)
     }
 
 
-    process(data, currLevel){
+    process(data, currLevel, parentId){
         const mgr = this.props.mgr;
-        const tree = [];
+        const tree = {
+            components: [],
+            flows: [],
+        }
         if(data.id) {
             const children = this.mgr.findElements(data, (childData) => {
-                console.log(`Check stage element for ${data.id}`, this.props.model)
-                return mgr.isStageElement(childData)
+                //console.log(`Check stage element for ${data.id}`, this.props.model)
+                return this.mgr.isStageElement(childData) && !mgr.isFlowElement(childData)
             });
-            
-            //console.log(children)
+
+            const itemRef = this.getStageItemRef(data.id, parentId);
             if(children.length == 0) {
-                tree.push(this.treeItem(data));
+                tree.components.push(this.createStageItem(data, itemRef));
             } else {
                 const nextLevel = currLevel + 1;
-                const childItems = [];
-                children.forEach( childEl => {  
-                    childItems.push(...this.process(childEl, nextLevel))
+                const childItems = {
+                    components: [],
+                    flows: [],
+                }
+                children.forEach( childEl => { 
+                    const result = this.process(childEl, nextLevel, data.id);
+                    childItems.components.push(...result.components)
+                    childItems.flows.push(...result.flows)
                 });
-                const itemWithChildrenContents = this.treeItem(data, childItems);
-                tree.push(itemWithChildrenContents);
+                const stageItem = this.createStageItem(data, itemRef, childItems.components)
+                tree.components.push(stageItem);
+                tree.flows.push(childItems.flows)
             }
+
+            const flowChildren = this.mgr.findElements(data, (childData) => {
+                return mgr.isFlowElement(childData)
+            });
+
+            if(flowChildren.length) {
+                flowChildren.forEach(flowData => {
+                    const flowRef = this.getStageItemRef(flowData.id, data.id);
+                    this.flows[flowData.id] = flowRef;
+                    tree.flows.push(this.createStageItem(flowData, flowRef))
+                })
+            }
+            
         }
         return tree;
     }
 
 
-    treeItem(data, children) {
+    createStageItem = (data, itemRef, childItems) => {
         const id = data.id;
         const name = data.name;
-
         const widgetProps = {
             key: id,
             id,
-            title: name,
+            name,
         }
         
         const style = { 
@@ -322,8 +409,26 @@ export class Stage extends React.Component {
             minWidth: data.meta.minWidth,
         } 
 
+        const compConfigName = this.mgr.getConfigName(data);
+
+       
+        const DynComponentStageItemType = getStageItemTypeByConfigName(compConfigName);
+
+        if(compConfigName === FLOW_CONFIG_NAME) {
+            return <DynComponentStageItemType 
+                ref={itemRef}
+                id={id}
+                key={id}
+                style={style}
+                isContainer={isContainerItem}
+                itemProps={widgetProps}
+                data={data}
+                children={childItems}
+                notifyEvent={(evt, evtData) => this.handleStageItemNotification(id, evt, evtData)}
+            />
+        }
         const StageItem = makeStageItem(
-            ElementWidget, 
+            DynComponentStageItemType, 
             {
                 onMouseDown: (e) => this.handleMouseDown(e, id),
                 onMouseMove: (e) => this.handleMouseMove(e, id),
@@ -334,54 +439,54 @@ export class Stage extends React.Component {
                 draggable:true,
             }
         );
-        
-        const isContainerItem = children ? true : false;
-        const content = isContainerItem ? children : 'Component';
-        const itemRef = React.createRef();
+        const isContainerItem = this.mgr.isContainerElement(data)
         const stageItem = (
             <StageItem 
                 ref={itemRef}
-                myRef={itemRef}
                 id={id}
                 key={id}
                 style={style}
                 isContainer={isContainerItem}
                 itemProps={widgetProps}
+                data={data}
+                children={childItems}
                 notifyEvent={(evt, evtData) => this.handleStageItemNotification(id, evt, evtData)}
-            >
-                {content}
-            </StageItem>
+            />
         );
-        this.stageItems[id] = {
-            ref: stageItem.ref,
-            parentRef: null,
-        }
-        if(isContainerItem) {
-            children.forEach(childStItem => {
-                const chStageId = childStItem.props.id;
-                // console.log(`${chStageId} is child of ${stageItem.props.id}`, this.stageItems[id] )
-                this.stageItems[chStageId].parentRef =  stageItem.ref;
-            })
-        }
         return stageItem;
     }
 
+    getStageItemRef = (dataId, parentId) => {
+        const parentRef = parentId ? this.stageItems[parentId].ref : null
+        const ref = React.createRef()
+        this.stageItems[dataId] = {
+            ref: ref,
+            parentRef: parentRef
+        }
+        return this.stageItems[dataId].ref;
+    }
     
     render() {
         const modelData = this.props.model.data;
         const tree = this.createTree(modelData)
+        if(!tree.flows.length) {
+            alert('NO flows')
+        }
         return (
-            <div style={ {position: 'absolute', width:'200%', height:'200%' } }
-                ref={this.ref} 
-                onMouseMove={(e) => this.handleMouseMove(e, 'STAGE')}
-                onMouseUp={(e) => this.handleMouseUp(e, 'STAGE')}
-                onDragBegin={(e) => this.handleDragBegin(e, 'STAGE')}
-                onDrag={(e) => this.handleDrag(e, 'STAGE')}
-                onDragEnd={ (e) => this.handleDragEnd(e, 'STAGE')}
-                draggable={true}
-            >
-                {tree}
-            </div>
+            <>
+                {tree.flows}
+                <div style={ {position: 'absolute', width:'200%', height:'200%' } }
+                    ref={this.ref} 
+                    onMouseMove={(e) => this.handleMouseMove(e, 'STAGE')}
+                    onMouseUp={(e) => this.handleMouseUp(e, 'STAGE')}
+                    onDragBegin={(e) => this.handleDragBegin(e, 'STAGE')}
+                    onDrag={(e) => this.handleDrag(e, 'STAGE')}
+                    onDragEnd={ (e) => this.handleDragEnd(e, 'STAGE')}
+                    draggable={true}
+                >
+                    {tree.components}
+                </div>
+            </>
         );
     }
 }
@@ -409,29 +514,5 @@ function nextCoordinates(currX, currY, mouseDeltaX, mouseDeltaY){
     return {
         top: newTop,
         left: newLeft,
-    }
-}
-
-
-
-class ElementWidget extends React.Component {
-    render() {
-        const props = this.props;
-        const wrapClassName = ['widget-container', 'card', props.className]; 
-        if(props.selected) {
-            wrapClassName.push('selected');
-        }
-        return (
-            <div style={props.style} className={wrapClassName.join(' ')}>
-                <div className='widget-header card-header' style={{ padding: '6px' }}>
-                    <header>
-                        <div className="widget-name">{this.props.title}</div>
-                    </header>
-                </div>
-                <div className='widget-content card-body' style={{position: 'relative'}}>
-                    {this.props.content}
-                </div>
-            </div>
-        );
     }
 }
