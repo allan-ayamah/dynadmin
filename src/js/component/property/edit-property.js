@@ -98,7 +98,7 @@ export function Select(props) {
     if(normalizedData.length > 0) {
         normalizedData.forEach(opt => {
             const label = opt.label !== undefined ? opt.label : opt;
-            const value = opt.value !== undefined ? opt.value : opt;
+            const value = opt.value !== undefined ? opt.value : opt.id ? opt.id : opt;
             options.push(
                 <option key={value} value={value}>
                     {label}

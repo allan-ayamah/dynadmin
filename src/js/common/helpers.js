@@ -1,10 +1,12 @@
 import lodashGet from 'lodash/get';
 import lodashSet from 'lodash/set';
 import cloneDeep from 'lodash/cloneDeep';
+import lodashIsEquals from 'lodash/isEqual'
 
 export const get = lodashGet
 export const set = lodashSet
 export const clone = cloneDeep 
+export const isEqual = lodashIsEquals
 
 export const describeId = (childId) => {
     const parts = childId.split('.');
@@ -30,4 +32,4 @@ export const h = {
     set,
 }
 
-export default {describeId, h};
+export default { describeId, h, isEqual };

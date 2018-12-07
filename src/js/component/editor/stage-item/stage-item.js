@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { clone } from '../../../common/helpers'
+import { StageItemType } from '.';
 
 
 export const StageItemEvent = {
@@ -15,6 +16,9 @@ export const StageItemEvent = {
     RESIZE : 'RESIZE',
     UPDATE_POSITION: 'U_COORD',
     UN_MOUNTING: 'UM',
+    RENDER_CHILDREN: "RC",
+    DONT_UPDATE: "D_UP",
+    UPDATE_DATA: "UD"
 }
 
 const CONTAINER_HEADER_HEIGHT = 37;
@@ -35,14 +39,16 @@ export function makeStageItem(Item, eventListeners) {
             super(props)
             this.myRef = React.createRef();
             this.initialStyle = this.props.style;
+            const { jsPlumbInstance } = props;
             this.state = {
+                jsPlumbInstance,
+                initialised: false,
                 children: this.props.children ? this.props.children : [],
                 data: this.props.data,
                 event: StageItemEvent.NONE,
                 eventData: null,
                 selected: this.props.selected,
                 initialStyle: this.initialStyle,
-                name: this.props.itemProps.name,
                 top: this.initialStyle.top,
                 left: this.initialStyle.left,
                 minWidth: this.initialStyle.minWidth, 
@@ -51,29 +57,48 @@ export function makeStageItem(Item, eventListeners) {
         }
 
 
-        init(data) {
-            
-        }
 
-        /**
-         * Adds new children
-         * @param {Array[StageItem]} children 
-         */
-        addChildren(children) {
-            const newChildren = this.state.children;
-            if(Array.isArray(children)) {
-                newChildren.push(...children)
-            } else {
-                newChildren.push(children)
-            }
-
-            this.setState({
-                children: newChildren
+        updatePosition(newPosition) {
+            console.log(`${this.getStageId()}, update POS`, newPosition)
+            this.setState({ 
+                event: StageItemEvent.UPDATE_POSITION,
+                top: newPosition.top,
+                left: newPosition.left,
+                minHeight: newPosition.minHeight,
+                minWidth: newPosition.minWidth
             })
         }
 
+        addChildren(children) {
+            if(!this.state.children.length) return;
+            console.log(`${this.getStageId()}Add new child`)
+            const newChildren =  this.state.children.concat(children);
+            this.setState({
+                children: newChildren,
+                event: StageItemEvent.RENDER_CHILDREN,
+            })
+        }
 
+        getChildrenStageIds() {
+            if(this.props.isContainer) {
+                this.children.map( child => {
+                    return child.getStageId();
+                })
+            }
+        }
 
+        updateData(newData) {
+            this.setState({
+                event: StageItemEvent.UPDATE_DATA,
+                data: newData,
+            })
+        }
+
+        handleClick = (e) => {
+            e.stopPropagation()
+            this.props.onClick();
+        }
+        
         handleEvent = (stageItemEvent, data, callback = () => {}) => {
             const e  = data.evt;
             console.log(`On event: ${stageItemEvent}`)
@@ -87,13 +112,6 @@ export function makeStageItem(Item, eventListeners) {
                     break;
                 }    
                 case StageItemEvent.UPDATE_POSITION: {
-                    this.setState({ 
-                        event: StageItemEvent.NONE,
-                        top: data.top,
-                        left: data.left,
-                        minHeight: data.minHeight,
-                        minWidth: data.minWidth
-                    }, callback());
                     break
                 }
                 default:
@@ -131,10 +149,28 @@ export function makeStageItem(Item, eventListeners) {
         }
 
 
+        reviewWidthAndHeight() {
+            const rect = this.getRect();
+            const newState = {
+                event: StageItemEvent.UPDATE_POSITION
+            }
+            if(rect.width > this.state.minWidth) {
+                newState.minWidth = rect.width;
+            } 
+            if(rect.height > this.state.minHeight) {
+                newState.minHeight = rect.height;
+            }
+            if(newState.minWidth || newState.minHeight) {
+                this.setState(newState);
+            }
+        }
+
         resize = (childId) => {
+
+            if(!this.props.isContainer) {
+                return this.reviewWidthAndHeight();
+            }
             const children = this.state.children
-            if(!children.length) return;
-            return;
             
             // find child wiht max top
             // console.log(this.props.children)
@@ -213,44 +249,39 @@ export function makeStageItem(Item, eventListeners) {
         }
 
         componentDidMount() {
-            alert(`StageItem[${this.props.id}] is mounted`)
-            this.resize();
+            console.log(`StageItem[${this.props.id}] is mounted`)
+            this.props.notifyEvent(StageItemEvent.READY, this.state)
         }
 
         componentWillUnmount() {
             alert(`StageItem[${this.props.id}] un mounting`)
-            //this.props.notifyEvent
+            this.props.notifyEvent(StageItemEvent.UN_MOUNTING, this.state)
         }
 
         shouldComponentUpdate(nextProps, nextState) {
-            return true;
+            if((this.state.event != nextState.event) && 
+                (nextState.event === StageItemEvent.UPDATE_POSITION
+                    || nextState.event === StageItemEvent.RENDER_CHILDREN
+                    || nextState.event === StageItemEvent.UPDATE_DATA
+                )) {
+                console.log(`StageItem[${this.props.id}] should update`)
+                return true;
+            }
+            return false;
         }
 
 
        componentDidUpdate(prevProps, prevState) {
-           const notifyData = clone(this.state);
-           switch(this.state.event) {
-               case StageItemEvent.RESIZE: {
-                   this.setState({
-                        event: StageItemEvent.NONE,
-                        eventData: null,
-                   },
-                   () => {
-                       this.props.notifyEvent(StageItemEvent.RESIZE, notifyData, prevState)
-                    })
-                    break;
-               }
-               case StageItemEvent.UPDATE_POSITION: {
-                    this.setState({
-                        event: StageItemEvent.NONE,
-                        eventData: null,
-                    },
-                    () => {
-                        this.props.notifyEvent(StageItemEvent.UPDATE_POSITION, notifyData, prevState)
-                    })
-                break;
-               }
-           }
+           console.log(`${this.getStageId()} did update`)
+           if(this.state.event === StageItemEvent.NONE) return;
+           const eventToSend = clone(this.state.event);
+           this.setState({
+               event: StageItemEvent.NONE, 
+               eventData: null
+            }, () => this.props.notifyEvent(eventToSend, this.state, prevState));
+
+            //Check actual width and height
+            this.reviewWidthAndHeight();
         }
 
         getTop = () => {
@@ -284,6 +315,11 @@ export function makeStageItem(Item, eventListeners) {
         getSelected = () => {
             return this.state.selected;
         }
+
+        getLevel = () => { return this.props.level }
+
+
+        getStageId = () => { return this.props.id } 
         
 
         render() {
@@ -294,27 +330,30 @@ export function makeStageItem(Item, eventListeners) {
             itemProps.event = this.state.event;
 
             let itemStyle = {}
-            if(this.state.children.length) {
-                itemStyle = {
-                    minWidth: this.state.minWidth, 
-                    minHeight: this.state.minHeight
-                }
+            
+            let zIndex = null; //this.getLevel() * 100;
+            itemStyle = {
+                minWidth: this.state.minWidth, 
+                minHeight: this.state.minHeight,
+                zIndex
             }
             
+            
             const style = Object.assign(clone(this.initialStyle), { 
+                position: 'absolute',
                 top: this.state.top, 
-                left: this.state.left 
+                left: this.state.left,
+                zIndex
             });
 
             
-            console.log(`${this.props.id} RENDER`, this.state)
+            console.log(`${this.props.id} CALL FOR RENDER`, this.state)
             
             return (
-                <div ref={this.myRef}
-                    style={style}
-                    {...eventListeners}
+                <div id={this.props.stageId} 
+                    onClick={this.handleClick} style={style} ref={this.myRef}
                 >
-                 <Item style={itemStyle}
+                 <Item style={itemStyle} 
                         selected={this.state.selected}
                         {...itemProps} 
                    />

@@ -1,12 +1,13 @@
-
 import React, { Component } from 'react';
-import  {EditProperties} from './js/component/property/edit-properties'
+import  { EditProperties } from './js/component/property/edit-properties'
 import DynManager from './js/component/core/dyn-manager';
 import ModelExplorer from './js/component/core/model-explorer';
 import { Stage } from './js/component/editor/index';
 import { describeId } from './js/common/helpers'
 import { componentsConfig, componentGroups, validationRules } from './js/components-config'
 import { Action } from './js/component/constants'  
+import { IODataBinder, getIODataBinderTestData } from './js/component/property/io-data-binder'
+import Modal from './js/component/modal';
 
 import './css/react-contextmenu.css';
 import './css/dyn-admin.css';
@@ -26,6 +27,15 @@ function Panel(props) {
   )
 }
 
+export const TRANSIENT_FLOW_DATA_ID = "TRANSIENT_FLOW_DATA_ID";
+function createTransientFlowData(sourceId, componentId) {
+  return {
+    id: TRANSIENT_FLOW_DATA_ID,
+    componentId: componentId,
+    source: sourceId,
+    target: "",
+  }
+}
 
 class DynAdmin extends Component {
   constructor(props) {
@@ -86,20 +96,26 @@ class DynAdmin extends Component {
 
     this.mgr = new DynManager(opts);
     this.model = this.mgr.createModel(1, 'Dynamic model 3');
+    this.mgr.updateComponentPos(this.model, 'page1', {
+      top: 40,
+      left: 0
+    });
 
     const form1 = this.mgr.createElement(this.model, 'page1', 'form')
     this.mgr.updateComponentPos(this.model, form1.id, {
-      top: 40,
-      left: 30
+      top: 0,
+      left: 0
     });
     const field1 = this.mgr.createElement(this.model, 'page1.form1', 'fld')
     const selectionField1 = this.mgr.createElement(this.model, 'page1.form1', 'sfld')
 
     const query1 = this.mgr.createElement(this.model, 'page1', 'query');
     this.mgr.updateComponentPos(this.model, query1.id, {
-      top: 70,
-      left: 270
+      top: 0,
+      left: 0
     });
+    this.mgr.createElement(this.model, 'page1.query1', 'qryI');
+    this.mgr.createElement(this.model, 'page1.query1', 'qryI');
 
     const flow1 = this.mgr.createElement(this.model, 'page1.form1', 'flow')
     flow1.source=form1.id;
@@ -111,17 +127,127 @@ class DynAdmin extends Component {
     this.state = {
       action: Action.Load,
       actionData: null,
+      openModal: false,
+      modalData: null,
       propsPanelData: null,
     };
 
     this.handleCreateElement = this.handleCreateElement.bind(this);
+  }
 
+  shouldComponentUpdate(nextProps, nextState) {
+   
+    if(nextState.action !== this.state.action) {
+      switch(nextState.action) {
+        case Action.Load: {
+            return false;
+        }
+        default:
+        break;
+      }
+    }
+    return true;
+  }
+
+
+  handleActionNotification = (type, notifData) => {
+    console.log(`Handle notification: ${type}`, notifData)
+    switch(type) {
+      case Action.FLOW_DRAW_END: {
+        const element = this.mgr.createElement(this.model, notifData.source, notifData.componentId);
+        element.source = notifData.source;
+        element.target = notifData.target;
+        this.setState({
+          action: Action.Load,
+          actionData: null,
+        }, 
+        () => this.handleEditElementProps(element.id)
+        )
+        break;
+      }
+      case Action.FLOW_DRAW_ABORT: {
+        this.setState({
+          action: Action.Load,
+          actionData: null,
+        })
+        break;
+      }
+      default:
+      break;
+    }
+  }
+
+  handleIOBinding = (flowDataId) => {
+    
+    const flowData = this.model.get(flowDataId);
+    const srcO = this.mgr.getElementIO(this.model, flowData.source).output;
+    const trgI = this.mgr.getElementIO(this.model, flowData.target).input;
+    
+    const binderProps = {
+      key: flowData.id,
+      parameters: flowData,
+      source: this.model.get(flowData.source),
+      target: this.model.get(flowData.target),
+      sourceData: srcO,
+      targetData: trgI,
+    }
+    this.setState({
+      openModal: true,
+      modalData: (
+          <IODataBinder {...binderProps}/>
+      ),
+    })
+
+    /*<NavTab key={`NAV_T_${flowDataId}`}>
+      <TabPane id={`TP_${flowDataId}`} title={"Data binding"}>
+        <IODataBinder key={flowDataId} source={srcO} target={trgI}/>
+      </TabPane>
+    </NavTab>*/
+    //<IODataBinder key={'IOBINDER'} {...getIODataBinderTestData()} />,
+    /*const panelConfig = {
+      closable: true,
+      panels: {
+        IOBinding: {
+          title: 'Data binding',
+          render: (cntProps) => {
+            return (
+              <IODataBinder 
+                key={flowDataId} 
+                source={srcO} 
+                target={trgI}
+                />
+            );
+          }
+        } 
+      }
+    }*/
+  }
+
+  handleSaveAndCloseModal = () => {
+    this.handleCloseModal();
+  }
+
+  handleCloseModal = () => {
+    this.setState({
+      action: Action.Load,
+      openModal: false,
+      modalData: null,
+      actionData: null,
+    })
   }
 
   handleCreateElement = (parentElId, componentId) => {
-    const element = this.mgr.createElement(this.model, parentElId, componentId);
-    this.handleEditElementProps(element.id);
+    if(this.mgr.isConfigFlowType(componentId)) {
+      this.setState({
+        action: Action.FLOW_DRAW_BEGIN,
+        actionData: createTransientFlowData(parentElId, componentId)
+      })
+    } else {
+      const element = this.mgr.createElement(this.model, parentElId, componentId);
+      this.handleEditElementProps(element.id);
+    }
   }
+  
 
   handleSaveProperty = (dataKey, data) => {
     // console.log(`Update: ${dataKey}`)
@@ -185,24 +311,25 @@ class DynAdmin extends Component {
         <div className="">
           <div className="row" style={{position: 'absolute', 'width':'100%', height:'100%'}}>
             <div className="doc docLeft col-4" style={{ padding: 0 }}>
-              <Panel title='Project explorer' className="vars-cexprs-holder" style={{height:'60%'}}>
+              <Panel key={`Explorer_${this.model.id}`} title='Project explorer' className="vars-cexprs-holder" style={{height:'60%'}}>
                   <ModelExplorer key={this.model.id} 
                     action={this.state.action}
                     actionData={this.state.actionData}
                     mgr={this.mgr} 
                     data={this.model.data} 
                     handleElementClick={this.handleEditElementProps}
+                    notify={this.handleActionNotification}
                     menuConfig={this.menuConfig}>
                   </ModelExplorer>
               </Panel>
-              <Panel title={propertiesPanel.title} 
+              <Panel key={`Props${this.model.id}`} title={propertiesPanel.title} 
                     className='edit-props-wrap' 
                     style={{height:'40%'}}>
                 {propertiesPanel.content}
               </Panel>
             </div> 
             <div className="doc docRight col-8" style={{ padding: 0 }}>
-              <Panel title="Stage" style={{height:'80%'}}>
+              <Panel key={`Stage${this.model.id}`} title="Stage" style={{height:'70%'}}>
                 <Stage key={this.model.id} 
                     mgr={this.mgr}
                     action={this.state.action}
@@ -210,15 +337,26 @@ class DynAdmin extends Component {
                     model={this.model}
                     data={this.model.data} 
                     handleElementClick={this.handleEditElementProps}
+                    onInitDataBinding={this.handleIOBinding}
+                    notify={this.handleActionNotification}
                     menuConfig={this.menuConfig}>
                 </Stage>
               </Panel>
-              <Panel title="Layouts and terminal panel" style={{height:'20%'}}>
-                Layout contents
+              <Panel key={`Layout${this.model.id}`} title="Layouts and terminal panel" style={{height:'30%'}}>
+                Layouts
               </Panel>
             </div>
           </div>
         </div>
+        <Modal key={`MODAL_${this.state.openModal}`}
+            isOpen={this.state.openModal} 
+            modalBackdrop={this.props.modalBackdrop}
+            modalRoot={this.props.modalRoot}
+            onClose={this.handleCloseModal}
+            onSave={this.handleSaveAndCloseModal}
+        >
+          {this.state.modalData}
+        </Modal>
       </div>
     );
   }

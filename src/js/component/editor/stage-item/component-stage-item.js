@@ -14,7 +14,7 @@ export default class ComponentStageItem extends React.Component {
                         <div className="widget-name">{this.props.name}</div>
                     </header>
                 </div>
-                <div className='widget-content card-body' style={{position: 'relative'}}>
+                <div className='widget-content card-body'>
                     {'COMPONENT'}
                 </div>
             </div>

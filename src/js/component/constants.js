@@ -4,7 +4,10 @@ export const Action = {
     EditProps: 'ep',
     Remove: 'rm',
     Copy: 'cp',
-    Paste: 'ps'
+    Paste: 'ps',
+    FLOW_DRAW_BEGIN: 'fdb',
+    FLOW_DRAW_END: 'fde',
+    FLOW_DRAW_ABORT: "fda"
 }
 
 export const PREDICATES = {
