@@ -80,11 +80,13 @@ export function makeStageItem(Item, eventListeners) {
         }
 
         getChildrenStageIds() {
-            if(this.props.isContainer) {
-                this.children.map( child => {
-                    return child.getStageId();
+            if(this.props.isContainer &&
+                this.state.children.length) {
+                return this.state.children.map( child => {
+                    return child.ref.current.getStageId();
                 })
             }
+            return []
         }
 
         updateData(newData) {
@@ -259,14 +261,14 @@ export function makeStageItem(Item, eventListeners) {
         }
 
         shouldComponentUpdate(nextProps, nextState) {
-            if((this.state.event != nextState.event) && 
-                (nextState.event === StageItemEvent.UPDATE_POSITION
-                    || nextState.event === StageItemEvent.RENDER_CHILDREN
-                    || nextState.event === StageItemEvent.UPDATE_DATA
+            if((nextState.event === StageItemEvent.UPDATE_POSITION
+                || nextState.event === StageItemEvent.RENDER_CHILDREN
+                || nextState.event === StageItemEvent.UPDATE_DATA
                 )) {
                 console.log(`StageItem[${this.props.id}] should update`)
                 return true;
             }
+            console.log(`StageItem[${this.props.id}] WILL NOT update ${this.state.event} - ${nextState.event}`)
             return false;
         }
 
@@ -319,7 +321,11 @@ export function makeStageItem(Item, eventListeners) {
         getLevel = () => { return this.props.level }
 
 
-        getStageId = () => { return this.props.id } 
+        getStageId = () => { return this.props.stageId } 
+
+        isContainerType() {
+            return this.props.isContainer;
+        }
         
 
         render() {
@@ -331,11 +337,11 @@ export function makeStageItem(Item, eventListeners) {
 
             let itemStyle = {}
             
-            let zIndex = null; //this.getLevel() * 100;
+            let zIndex = this.getLevel() * 100;
             itemStyle = {
                 minWidth: this.state.minWidth, 
                 minHeight: this.state.minHeight,
-                zIndex
+                //zIndex
             }
             
             
@@ -343,7 +349,7 @@ export function makeStageItem(Item, eventListeners) {
                 position: 'absolute',
                 top: this.state.top, 
                 left: this.state.left,
-                zIndex
+                //zIndex
             });
 
             

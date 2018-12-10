@@ -197,7 +197,7 @@ export class Stage extends React.Component {
                     if(this.mgr.isFlowElement(data)) {
                         console.log(`INIt NEW FLOW`, data);
                         this.initFlow(instance.stageId);
-                        //this.state.jsPlumbInstance.repaintEverything();
+                        this.state.jsPlumbInstance.repaintEverything();
                     } else {
                         this.mountStageItem(instance.component, instance.stageId);
                     }
@@ -245,9 +245,14 @@ export class Stage extends React.Component {
             console.log(f, s)
         }
 
+        
+        j.bind("drag", function(p) {
+            console.log("ACTUAL DRAG", p)
+        })
+
         j.bind("beforeDrag", function(p) {
             const { source, target } = p;
-            console.log("BEFORE DRAg")
+            console.log("BEFORE DRAg", p)
         })
 
         j.bind("beforeDrop", function(p) {
@@ -327,14 +332,14 @@ export class Stage extends React.Component {
                 break;
             }
         }
-        if([StageItemEvent.MOVED, StageItemEvent.RESIZE].includes(event)) {
+        if([StageItemEvent.UPDATE_POSITION, 
+            StageItemEvent.RESIZE, 
+            StageItemEvent.MOVED].includes(event)) {
             const stageItem = this.getStageItem(stageId);
-            this.mgr.updateComponentPos(this.model, stageId, data);
+            this.mgr.updateComponentPos(this.model, this.resolveDataId(stageId), data);
             if(stageItem.parentRef) {
-                this.state.jsPlumbInstance.revalidate(stageItem.parentRef.getStageId())   
-            } else {
-                //MODEL(ROOT)
-                this.state.jsPlumbInstance.rePaintEverything();
+                console.log(`Call revalidate on ${stageItem.parentRef.current.getStageId()}`)
+                this.state.jsPlumbInstance.revalidate(stageItem.parentRef.current.getStageId())   
             }
         }
     }
@@ -650,12 +655,24 @@ export class Stage extends React.Component {
         const _this = this;
         const item = this.stageItems[stageId];
         if(item) {
-            const itemRef = item.ref.current;
             const j = this.state.jsPlumbInstance;
-            const jsPlumbObj = j.draggable(itemRef.getDOMNode(), {
-                start: (el, e) => {
-                    console.log("START Dragg", el, e)
-                    //_this.state.jsPlumbInstance.revalidate("dyn_stge_i_page1")
+            const itemRef = item.ref.current;
+            const itemDOM = itemRef.getDOMNode();
+            const data = {
+                stageId,
+                childrenStageIds: itemRef.getChildrenStageIds()
+            }
+            itemRef.jsPlumbObj = j.draggable(itemDOM, {
+                data: data,
+                start: (el) => {
+                    console.log(`${stageId} Drag start`, el)
+                },
+                drag: (el) => {
+                    console.log(`${stageId} Drag`, el)
+                    if(data.childrenStageIds) {
+                        _this.state.jsPlumbInstance.repaint(data.childrenStageIds)
+                    }
+                    
                 },
                 stop: (el) => {
                     console.log('STOP DRAG', el)
@@ -665,21 +682,31 @@ export class Stage extends React.Component {
                     })
                 }
             });
-            console.log(stageId, jsPlumbObj)
+            j.droppable(itemDOM, {
+                rank: itemRef.getLevel()
+            })
+            /*if(itemRef.isContainerType) {
+
+            }*/
+            console.log(stageId, item.jsPlumbObj)
             j.makeSource(stageId, {
                 filter: (e, el) => {
                     return _this.canStartFlow(stageId, e, el);
                 }
             })
-            j.makeTarget(stageId)
+            j.makeTarget(stageId, {
+                dropOptions: {
+                    rank: itemRef.getLevel()
+                }
+            })
             itemRef.resize();
-            item.jsPlumbObj = jsPlumbObj;
             return true;
-        } else 
-        return this.initFlow(stageId)
+        } else {
+            return this.initFlow(stageId)
+        }
     }
 
-    canStartFlow = (stageItemId, e, el) => {
+    canStartFlow(stageItemId, e, el) {
         return (this.state.stageAction === StageAction.FLOW_DRAW_BEGIN
                 && this.state.stageItemId === stageItemId)
     }
