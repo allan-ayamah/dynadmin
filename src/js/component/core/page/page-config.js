@@ -9,9 +9,8 @@ export const pageConfig = {
         namePrefix: 'Page',
         label: 'Page',
         icon: 'page',
-        elements: [VARIABLE_CONFIG_NAME, ACTIVATION_EXPR_CONFIG_NAME],
         style: {
-            minWidth: "100px",
+            minWidth: 100,
         }
     },
     properties: {
@@ -19,6 +18,20 @@ export const pageConfig = {
             type: 'string',
             name: 'Name',
         }
+    },
+    subComponents: {
+        contentComponents: {
+            componentExpression: (component) => {
+                return component.meta.viewOnly || component.meta.viewOperation;
+            }
+        },
+        variables: {
+            componentConfigName: VARIABLE_CONFIG_NAME,
+        },
+        activationExpressions: {
+            componentConfigName: ACTIVATION_EXPR_CONFIG_NAME
+        }
     }
+    
 };
 export default pageConfig;

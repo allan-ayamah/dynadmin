@@ -140,8 +140,8 @@ export class ModelExplorer extends React.Component {
 
     
     render() {
-        const modelData = this.props.data;
-        const tree = this.createTree(modelData)
+        const model = this.props.model;
+        const tree = this.createTree(model.getData())
         return (
             <>{tree}</>
         );

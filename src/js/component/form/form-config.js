@@ -26,10 +26,28 @@ export const formConfig = {
             required: true,
         }
     },
+    subComponents: {
+        fields: {
+            componentConfigName: FIELD_CONFIG_NAME
+        },
+        selectionFields: {
+            componentConfigName: SELECTION_FIELD_CONFIG_NAME,
+        }
+    },
+    input: (data, children) => {
+        if(!children)  return []
+        const fieldElements = children.filter((element) => {
+            const componentId = element.meta.configName;
+            if(defaultComponents.includes(componentId)) {
+                return element;
+            }
+        });
+        return generateInputOutput(data.meta.localId, fieldElements);
+    },
     output: (data, children) => {
         if(!children)  return []
         const fieldElements = children.filter((element) => {
-            const componentId = element.meta.componentId;
+            const componentId = element.meta.configName;
             if(defaultComponents.includes(componentId)) {
                 return element;
             }

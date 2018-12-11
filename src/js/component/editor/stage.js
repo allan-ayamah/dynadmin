@@ -215,8 +215,8 @@ export class Stage extends React.Component {
     componentDidUpdate(prevProps, prevState) {
         console.log("STAGE DID UPDATE", this.stageItems)
 
-        if(this.state.isReady && 
-            !this.state.initialised) {
+        if(this.state.isReady && !this.state.initialised) {
+            this.state.jsPlumbInstance.setSuspendDrawing(true);
             const stageItemKeys = Object.keys(this.stageItems);
             stageItemKeys.forEach(itemKey => {
                 this.initStageItem(itemKey)
@@ -227,6 +227,7 @@ export class Stage extends React.Component {
             flowIds.forEach( id => {
                 this.initFlow(id);
             })
+            this.state.jsPlumbInstance.setSuspendDrawing(false, true);
             this.setState({
                 initialised: true,
             });
@@ -669,9 +670,7 @@ export class Stage extends React.Component {
                 },
                 drag: (el) => {
                     console.log(`${stageId} Drag`, el)
-                    if(data.childrenStageIds) {
-                        _this.state.jsPlumbInstance.repaint(data.childrenStageIds)
-                    }
+                    _this.state.jsPlumbInstance.repaint(itemRef.getChildrenStageIds())
                     
                 },
                 stop: (el) => {
@@ -682,12 +681,6 @@ export class Stage extends React.Component {
                     })
                 }
             });
-            j.droppable(itemDOM, {
-                rank: itemRef.getLevel()
-            })
-            /*if(itemRef.isContainerType) {
-
-            }*/
             console.log(stageId, item.jsPlumbObj)
             j.makeSource(stageId, {
                 filter: (e, el) => {
@@ -698,8 +691,7 @@ export class Stage extends React.Component {
                 dropOptions: {
                     rank: itemRef.getLevel()
                 }
-            })
-            itemRef.resize();
+            });
             return true;
         } else {
             return this.initFlow(stageId)
@@ -771,21 +763,13 @@ export class Stage extends React.Component {
     }
     
     render() {
-        const modelData = this.props.model.data;
-        const tree = this.createTree(modelData)
+        const tree = this.createTree(this.props.model.getData())
         return (
             <div>
                 <div 
                     ref={this.ref} 
                     id={STAGE_CANVAS_REF_NAME} 
                     style={ {position: 'absolute', width:'200%', height:'200%' } }
-                    /*ref={this.ref} 
-                    onMouseMove={(e) => this.handleMouseMove(e, 'STAGE')}
-                    onMouseUp={(e) => this.handleMouseUp(e, 'STAGE')}
-                    onDragBegin={(e) => this.handleDragBegin(e, 'STAGE')}
-                    onDrag={(e) => this.handleDrag(e, 'STAGE')}
-                    onDragEnd={ (e) => this.handleDragEnd(e, 'STAGE')}
-                    draggable={true}*/
                 >
                     {tree.components}
                 </div>

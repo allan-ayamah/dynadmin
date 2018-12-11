@@ -8,7 +8,6 @@ export const modelConfig = {
         namePrefix: 'Dynamic form',
         label: 'Dynamic form',
         icon: 'model',
-        elements: [PAGE_CONFIG_NAME]
     },
     properties: {
         name: {
@@ -16,5 +15,15 @@ export const modelConfig = {
             name: 'Name',
         },
     },
+    subComponents: {
+        pages: {
+            componentConfigName: PAGE_CONFIG_NAME
+        },
+        operationComponents: {
+            componentExpression: (component) => {
+                return component.meta.isOperationOnly || component.meta.viewOperation
+            }
+        }
+    }
 };
 export default modelConfig;

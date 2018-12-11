@@ -20,29 +20,11 @@ export default class Data {
      * @returns{Object} - json object describng the unit/service  
      */
     get = (dataPath) => {
-        if(dataPath === this.id)
-            return this.data;  
         return get(this._data, dataPath) 
     }
 
     has = (dataPath) => {
         return this.get(dataPath) ? true : false;
-    }
-
-     /**
-     * Finds the parent data given childs id
-     * @param {String} _id -The child id
-     */
-    parent(someId) {
-        const data = this._data;
-        if(someId === data.id) {
-            return data;
-        }
-        const parts = someId.split('.');
-        // unit is the last part of the data key
-        let assignedId = parts.length > 1 ? parts[parts.length - 1] : parts[0];
-        const parentId = someId.split(`.${assignedId}`)[0];
-        return get(data, parentId)
     }
 
     get js() {
@@ -52,12 +34,6 @@ export default class Data {
     get json() {
         return this._data
     }
-
-    set data(data) { this._data = data; console.log("SETDA")}
-    
+    set data(data) { this._data = data;}
     get data() { return this._data }
-
-    get id() { return this._data.id }
-
-    get name() { return this._data.name } 
 }

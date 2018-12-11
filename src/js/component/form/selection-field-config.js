@@ -8,8 +8,6 @@ export const selectionFieldConfig = {
         namePrefix: 'Selection field',
         label: 'Selection field',
         icon: 'selection-field',
-        elements: [SLOT_CONFIG_NAME],
-        acceptsGroups: ['field-validation']
     },
     properties: {
         name: {
@@ -35,6 +33,13 @@ export const selectionFieldConfig = {
             default: false
         }
     },
-    elements: []
+    subComponents: {
+        slots: {
+            componentConfigName: SLOT_CONFIG_NAME
+        },
+        validationRules: {
+            componentGroups: ["field-validation"]
+        }
+    }
 };
 export default selectionFieldConfig;

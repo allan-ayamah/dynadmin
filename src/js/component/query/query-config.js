@@ -68,7 +68,6 @@ export const queryConfig = {
         label: 'Query',
         icon: 'Query',
         group: 'utilityComponents',
-        elements: [queryInputConfig.meta.id, queryOutputConfig.meta.id],
         viewOperation: true,
         flowSource: true,
         flowTarget: true,
@@ -127,10 +126,17 @@ export const queryConfig = {
             }
         }
     },
+    subComponents: {
+        queryInputs: {
+            componentConfigName: queryInputConfig.meta.id
+        },
+        queryOutputs: {
+            componentConfigName: queryOutputConfig.meta.id
+        }
+    },
     input: (data, children) => {
-        if(!children) return []
         const inputElements = children.filter((element) => {
-            if(element.meta.componentId === queryInputConfig.meta.id) {
+            if(element.meta.configName === queryInputConfig.meta.id) {
                 return element;
             }
         });
@@ -139,7 +145,7 @@ export const queryConfig = {
     output: (data, children) => {
         if(!children) return [];
         const outputElements = children.filter((element) => {
-            if(element.meta.componentId === queryOutputConfig.meta.id) {
+            if(element.meta.configName === queryOutputConfig.meta.id) {
                 return element;
             }
         });

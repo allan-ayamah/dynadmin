@@ -43,10 +43,13 @@ export class EditProperties extends React.Component {
         if(data !== undefined) {
             if(typeof data === 'function'){
                 console.log(`${propertyName} data is function `)
+                const model = this.props.model;
                 const _id = this.state.data.id;
+                const parentId = this.props.mgr.parentIdOf(model, _id)
+                const parentData = this.props.model.get(parentId);
                 return data(
                     this.state.data,
-                    this.props.model.parent(_id), 
+                    parentData, 
                     this.props.model.data,
                     this.props.mgr
                 );

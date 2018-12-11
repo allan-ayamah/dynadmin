@@ -25,13 +25,16 @@ export const variableConfig = {
             type: 'component',
             name: 'Component',
             data: (_data, page, modelData, mgr) => {
-                const viewOperationElements = mgr.findElements(page, (el) => {
-                    return mgr.isViewOnlyElement(el) || mgr.isViewOperationElement(el)
-                });
-                if(!viewOperationElements) return [];
-                let values = [{ label: '', value: '' }]
-                viewOperationElements.forEach(el => {
-                    values.push({ label: el.name, value: el.id })
+                const viewOperationElements = page.contentComponents;
+                const contentComponentsKeys = Object.keys(viewOperationElements)
+                if(!contentComponentsKeys.length) return [];
+                const values = [{ label: "", value: "" }]
+                contentComponentsKeys.forEach(compKey => {
+                    const comp = viewOperationElements[compKey];
+                    values.push({ 
+                        label: comp.name, 
+                        id: comp.id 
+                    });
                 })
                 //console.log('values', values)
                 return values;

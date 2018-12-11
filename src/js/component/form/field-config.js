@@ -9,8 +9,6 @@ export const fieldConfig = {
         namePrefix: 'Field',
         label: 'Field',
         icon: 'field',
-        elements: [SLOT_CONFIG_NAME],
-        acceptsGroups: ['field-validation']
     },
     properties: {
         name: {
@@ -36,5 +34,13 @@ export const fieldConfig = {
             default: false
         }
     },
+    subComponents: {
+        slots: {
+            componentConfigName: SLOT_CONFIG_NAME
+        },
+        validationRules: {
+            componentGroups: ["field-validation"]
+        }
+    }
 };
 export default fieldConfig;

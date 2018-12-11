@@ -3,7 +3,7 @@ import  { EditProperties } from './js/component/property/edit-properties'
 import DynManager from './js/component/core/dyn-manager';
 import ModelExplorer from './js/component/core/model-explorer';
 import { Stage } from './js/component/editor/index';
-import { describeId } from './js/common/helpers'
+import { describeId, clone } from './js/common/helpers'
 import { componentsConfig, componentGroups, validationRules } from './js/components-config'
 import { Action } from './js/component/constants'  
 import { IODataBinder, getIODataBinderTestData } from './js/component/property/io-data-binder'
@@ -96,34 +96,47 @@ class DynAdmin extends Component {
 
     this.mgr = new DynManager(opts);
     this.model = this.mgr.createModel(1, 'Dynamic model 3');
-    this.mgr.updateComponentPos(this.model, 'page1', {
-      top: 40,
-      left: 0
+    const page1 = this.model.get('mdl1.pages.page1')
+
+    this.mgr.updateComponentPos(this.model, this.model.id, {
+      top: 26,
+      left: 0,
+      minWidth: 565.926,
+      minHeight: 281.773,
     });
 
-    const form1 = this.mgr.createElement(this.model, 'page1', 'form')
+    this.mgr.updateComponentPos(this.model, page1.id, {
+      top: 26,
+      left: 0,
+      minWidth: 545.926,
+      minHeight: 198.773,
+    });
+
+    const form1 = this.mgr.createElement(this.model, page1.id, 'form')
+    console.log("HERE", form1)
     this.mgr.updateComponentPos(this.model, form1.id, {
-      top: 0,
-      left: 0
+      top: 36,
+      left: 107
     });
-    const field1 = this.mgr.createElement(this.model, 'page1.form1', 'fld')
-    const selectionField1 = this.mgr.createElement(this.model, 'page1.form1', 'sfld')
+    const field1 = this.mgr.createElement(this.model, form1.id, 'fld')
+    const selectionField1 = this.mgr.createElement(this.model, form1.id, 'sfld')
 
-    const query1 = this.mgr.createElement(this.model, 'page1', 'query');
+    const query1 = this.mgr.createElement(this.model, page1.id, 'query');
     this.mgr.updateComponentPos(this.model, query1.id, {
-      top: 0,
-      left: 0
+      top: 30,
+      left: 359,
     });
-    this.mgr.createElement(this.model, 'page1.query1', 'qryI');
-    this.mgr.createElement(this.model, 'page1.query1', 'qryI');
-
-    const flow1 = this.mgr.createElement(this.model, 'page1.form1', 'flow')
+    this.mgr.createElement(this.model, query1.id, 'qryI');
+    this.mgr.createElement(this.model, query1.id, 'qryI');
+    
+    const flow1 = this.mgr.createElement(this.model, query1.id, 'flow')
     flow1.source=form1.id;
     flow1.target=query1.id;
-    //console.log(this.model.data)
-    const var1 = this.mgr.createElement(this.model, 'page1', 'var')
-    const var2 = this.mgr.createElement(this.model, 'page1', 'var')
+   
+    const var1 = this.mgr.createElement(this.model, page1.id, 'var')
+    const var2 = this.mgr.createElement(this.model, page1.id, 'var')
 
+     //console.log(this.model.data)
     this.state = {
       action: Action.Load,
       actionData: null,
@@ -133,6 +146,7 @@ class DynAdmin extends Component {
     };
 
     this.handleCreateElement = this.handleCreateElement.bind(this);
+    console.log(`MODEL DATA`, clone(this.model.data))
   }
 
   shouldComponentUpdate(nextProps, nextState) {
@@ -259,9 +273,8 @@ class DynAdmin extends Component {
   }
 
   handleEditElementProps = (elementId) => {
-    const element = Object.assign({}, this.model.get(elementId));
-    const componentId = element.meta.componentId;
-    const componentConf = this.mgr.getConfigByName(componentId);
+    const element = this.model.get(elementId);
+    const componentConf = this.mgr.getConfigByName(element.meta.configName);
     const attrConfig = componentConf.properties;
     const dataKeys = {}
     Object.keys(attrConfig).forEach(propName => {
@@ -316,7 +329,7 @@ class DynAdmin extends Component {
                     action={this.state.action}
                     actionData={this.state.actionData}
                     mgr={this.mgr} 
-                    data={this.model.data} 
+                    model={this.model} 
                     handleElementClick={this.handleEditElementProps}
                     notify={this.handleActionNotification}
                     menuConfig={this.menuConfig}>
@@ -330,12 +343,11 @@ class DynAdmin extends Component {
             </div> 
             <div className="doc docRight col-8" style={{ padding: 0 }}>
               <Panel key={`Stage${this.model.id}`} title="Stage" style={{height:'70%'}}>
-                <Stage key={this.model.id} 
+               <Stage key={this.model.id} 
                     mgr={this.mgr}
                     action={this.state.action}
                     actionData={this.state.actionData} 
                     model={this.model}
-                    data={this.model.data} 
                     handleElementClick={this.handleEditElementProps}
                     onInitDataBinding={this.handleIOBinding}
                     notify={this.handleActionNotification}
