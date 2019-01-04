@@ -23,17 +23,14 @@ const StageAction = Object.assign(ElementAction, {
 
 
 
-function getStageItemTypeByConfigName(componentConfigName){
-    switch(componentConfigName) {
-        case MODEL_CONFIG_NAME: 
-            return StageItemType.ContainerType;
-        case PAGE_CONFIG_NAME: 
-            return StageItemType.ContainerType
-        case FLOW_CONFIG_NAME:
-            return StageItemType.FlowType
-        default:
-            return StageItemType.ComponentType
+function getStageItemType(compHelper){
+    if(compHelper.isLink()) {
+        return StageItemType.FlowType
     }
+    if(compHelper.isUnitComponent()) {
+        return StageItemType.ComponentType;
+    }
+    return StageItemType.ContainerType;
 }
 
 const STAGE_ITEM_ID_PREFIX = 'dyn_stge_i_';
@@ -185,13 +182,14 @@ export class Stage extends React.Component {
             }
             case Action.EditProps: {
                 const dataId = nextProps.actionData.id;
+                const compHelper = this.model.getComponentHelper(dataId);
                 const data = nextProps.actionData.data;
                 const expectedStageId = this.createStageId(dataId)
                 if(this.isStageItem(expectedStageId)) {
                     this.updateStageItemData(expectedStageId, data)
                     return false;  
                 }
-                if(this.props.mgr.isStageElement(data)) {
+                if(compHelper.isStageComponent()) {
                     // alert("Create new item")
                     const instance = this.createStageItem(data);
                     if(this.mgr.isFlowElement(data)) {
@@ -519,10 +517,18 @@ export class Stage extends React.Component {
             flows: [],
         }
         if(data.id) {
-            const children = this.mgr.findElements(data, (childData) => {
-                //console.log(`Check stage element for ${data.id}`, this.props.model)
-                return this.mgr.isStageElement(childData) && !mgr.isFlowElement(childData)
-            });
+            const children = []
+            const flowChildren = [];
+            const helper = this.model.getComponentHelper(data.id);
+            const _this = this;
+            helper.forEachSubcomponent((subComponent) => {
+                const subHelper = this.model.getComponentHelper(subComponent.id);
+                if(subHelper.isLink()) {
+                    flowChildren.push(subComponent)
+                } else if(subHelper.isStageComponent()) {
+                    children.push(subComponent);
+                } 
+            })
 
             const stageId = this.createStageId(data.id);
             const itemRef = this.getStageItemRef(data.id, parentId)
@@ -544,10 +550,6 @@ export class Stage extends React.Component {
                 const stageItem = this.createComponentStageItem(stageId, data, itemRef, currLevel, childItems.components)
                 tree.components.push(stageItem);
             }
-
-            const flowChildren = this.mgr.findElements(data, (childData) => {
-                return mgr.isFlowElement(childData)
-            });
 
             if(flowChildren.length) {
                 flowChildren.forEach(flowData => {
@@ -585,7 +587,8 @@ export class Stage extends React.Component {
 
     createStageItem(data, children) {
         const stageId = this.createStageId(data.id);
-        if(this.props.mgr.isFlowElement(data)) {
+        const compHelper = this.model.getComponentHelper(data.id);
+        if(compHelper.isLink()) {
             return this.flows[stageId] = {
                 stageId,
                 data,
@@ -593,7 +596,7 @@ export class Stage extends React.Component {
             }
         }
         let parentDataId = this.props.mgr.parentIdOf(this.model, data.id);
-        console.log(`PARent Data ${parentDataId}`)
+        console.log(`Parent Data Id: ${parentDataId}`)
         const itemRef = this.getStageItemRef(data.id, parentDataId)
         const parentRef = this.getStageItem(stageId).parentRef.current;
         const itemLevel = parentRef.getLevel() + 1;
@@ -620,12 +623,14 @@ export class Stage extends React.Component {
             minWidth: data.meta.minWidth,
         } 
 
-        const compConfigName = this.mgr.getConfigName(data);
-        const DynComponentStageItemType = getStageItemTypeByConfigName(compConfigName);
-        const StageItem = makeStageItem(DynComponentStageItemType, {
-
-        });
-        const isContainerItem = this.mgr.isContainerElement(data)
+        const compHelper = this.model.getComponentHelper(data.id);
+        const DynComponentStageItemType = getStageItemType(compHelper);
+        const StageItem = makeStageItem(DynComponentStageItemType, {});
+        const isContainerItem = compHelper.isContainer();
+        let children = childItems
+        if(isContainerItem && (!children || !children.length)) {
+            children =  [];
+        }
         const stageItem = (
             <StageItem 
                 ref={itemRef}
@@ -638,7 +643,7 @@ export class Stage extends React.Component {
                 itemProps={widgetProps}
                 data={data}
                 level={level}
-                children={childItems}
+                children={children}
                 onClick={() => this.props.handleElementClick(data.id)}
                 notifyEvent={(evt, evtData) => this.handleStageItemNotification(stageId, evt, evtData)}
             />

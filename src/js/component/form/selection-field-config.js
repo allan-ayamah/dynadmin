@@ -22,6 +22,11 @@ export const selectionFieldConfig = {
             data: DATA_TYPES,
             default: DATA_TYPES.value[0]
         },
+        preloaded: {
+            type: "boolean",
+            name: "Preloaded",
+            default: false,
+        },
         contentType: {
             type: 'string',
             name: 'Content type',

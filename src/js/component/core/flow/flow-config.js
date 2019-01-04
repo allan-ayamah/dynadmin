@@ -1,5 +1,7 @@
 import { FLOW_TYPE } from '../../constants';
 
+import { _forEach, _getLocalId } from "js/common/utils";
+
 export const FLOW_CONFIG_NAME = 'flow';
 
 export const flowConfig = {
@@ -8,6 +10,7 @@ export const flowConfig = {
         namePrefix: 'Flow',
         label: 'Flow',
         icon: 'link',
+        isNormalLink: true
     },
     properties: {
         name: {
@@ -56,6 +59,17 @@ export const flowConfig = {
             }
         }
     },
+    logic: (component) => {
+        const descr = {
+            service: "com.atena.dynzilla.core.LinkService",
+            name: component.name,
+            sourceId: _getLocalId(component.source),
+            targetId: _getLocalId(component.target),
+            propagations: component.propagations
+        }
+        
+        return descr;
+    }
 };
 
 export default flowConfig;

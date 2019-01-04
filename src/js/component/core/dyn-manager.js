@@ -23,7 +23,11 @@ export class DynManager {
             components.push(...userComponents);
         }
         this.componentConfigs = {}  
-        this.registerConfigs(components);   
+        this.OKLinkName = null;
+        this.KOLinkName = null;
+        this.NormalLinkName = null;
+        this.linkNames = new Set();
+        this.registerConfigs(components);
     }
     
     /**
@@ -41,7 +45,7 @@ export class DynManager {
             modelId = `${MODEL_CONFIG_NAME}${modelId}`;
         }
         const modelData = this.initData(modelId, modelId, name, this.getConfigByName(MODEL_CONFIG_NAME));
-        const model = new Model(modelId, modelData)
+        const model = new Model(modelId, modelData, this);
 
         //Create default page
         this.createElement(model, model.id, PAGE_CONFIG_NAME);
@@ -70,15 +74,49 @@ export class DynManager {
      * @param {Boolean} [overrideAlways=true]
      */
     registerConfigs(newConfig, overrideAlways=true) {
+        const _this = this;
         const configArr = Array.isArray(newConfig) ? newConfig : [newConfig];
         configArr.forEach(configItem => {
-            const name = configItem.meta.id;
-            if(this.getConfigByName(name)) {
+            const configName = configItem.meta.id;
+            let config = null;
+            if(this.getConfigByName(configName)) {
                 if(!overrideAlways) return;
-                delete this.componentConfigs[name];
-                this.componentConfigs[name] = Object.assign({}, configItem);
-            } else {
-                this.componentConfigs[name] = Object.assign({}, configItem);
+                delete this.componentConfigs[configName];   
+            }
+            config = this.componentConfigs[configName] = Object.assign({}, configItem);
+
+            if(config.meta.isNormalLink === true) {
+                _this.NormalLinkName = configName;
+                _this.linkNames.add(configName);
+            }
+
+            if(config.meta.isOKLink === true) {
+                _this.OKLinkName = configName;
+                _this.linkNames.add(configName);
+            }
+
+            if(config.meta.isKOLink === true) {
+                _this.KOLinkName = configName;
+                _this.linkNames.add(configName);
+            }
+
+            config.isContainer = () => {
+                if(config.meta.isContainer === true) 
+                    return true;
+                if(config.meta.isContainer === false) 
+                    return false;
+                if(config.meta.isPage) 
+                    return true;
+                return false;
+            }
+
+            config.isUnitComponent = function() {
+                const meta = config.meta;
+                if(meta.viewOperation || meta.OperationOnly
+                    || meta.viewOnly) {
+                    return true;
+                }
+                return false;
             }
         })
 
@@ -89,12 +127,21 @@ export class DynManager {
             config.segments = new Set();
             config.scConfigToSegmentMap = new Map();
             config.allowedComponents = [];
+            config.allowedLinks = new Set();
             const defaultAddElements = [];
             
-            // add flow
-            if(config.meta.flowSource) {
-                config.allowedComponents.push(FLOW_CONFIG_NAME);
-                defaultAddElements.push(FLOW_CONFIG_NAME);
+            // add links
+            if(config.meta.flowSource === true) {
+                config.allowedLinks.add(this.NormalLinkName);
+                if(config.meta.operationOnly === true  
+                    || config.meta.viewOperation) {
+                    config.allowedLinks.add(this.OKLinkName);
+                    config.allowedLinks.add(this.KOLinkName);
+                }
+            }
+            if(config.allowedLinks.size > 0) {
+                config.allowedComponents.push(...config.allowedLinks);
+                defaultAddElements.push(...config.allowedLinks);
             }
 
             // process subComponents
@@ -127,11 +174,12 @@ export class DynManager {
                     }
                 })
             }
-
             // Flow must always at the bottom
-            if(config.meta.flowSource) {
-                config.segments.add("outgoingFlows");
-                config.scConfigToSegmentMap.set(FLOW_CONFIG_NAME, "outgoingFlows");
+            config.segments.add("outgoingLinks");
+            if(config.allowedLinks.size > 0) {
+                config.allowedLinks.forEach((linkName) => {
+                    config.scConfigToSegmentMap.set(linkName, "outgoingLinks");
+                })
             }
 
             config.canInclude = (cfName) => {
@@ -142,6 +190,11 @@ export class DynManager {
                 return config.scConfigToSegmentMap.get(cfName);
             }
 
+            /**
+             * Returns all subcomponents a component
+             * 
+             * @param {ComponentDefinition} component -- the component
+             */
             config.getSC = (component) => {
                 console.log(`${configName} SC keys`, config.segments)
                 const resultArr = [];
@@ -337,41 +390,10 @@ export class DynManager {
 
 
     updateComponentPos(model, dataId, posData) {
-        /*model.set(`${dataId}.meta.left`, posData.left);
+        model.set(`${dataId}.meta.left`, posData.left);
         model.set(`${dataId}.meta.top`, posData.top);
         model.set(`${dataId}.meta.minWidth`, posData.minWidth);
-        model.set(`${dataId}.meta.minHeight`, posData.minHeight);*/
-    }
-
-    findElements(data, callback) {
-        const cConfig = this.getConfigByName(data.meta.configName);
-        console.log(`${data.id} find children`)
-        const scArr = cConfig.getSC(data);
-        console.log(`${data.id} results`, scArr, scArr.length)
-        if(!callback) {
-            return scArr;
-        }
-        const filteredResult = [];
-        scArr.forEach( c => {
-            if(callback(c)) {
-                filteredResult.push(c);
-            }
-        })
-        return filteredResult
-        
-        /*const propertyNames = Object.keys(this.getConfigByName(configName).properties)
-        propertyNames.push('id', 'dataKey', 'meta', 'input', 'output')
-
-        const foundKeys = [];
-        let filteredKeys = Object.keys(data).filter(key => !propertyNames.includes(key));
-        filteredKeys = filteredKeys.sort();
-        filteredKeys.forEach(compKey => {
-             if (cb(data[compKey])) {
-                foundKeys.push(data[compKey]);
-             }
-        });
-
-        return foundKeys;*/
+        model.set(`${dataId}.meta.minHeight`, posData.minHeight);
     }
 
     /**
@@ -396,46 +418,16 @@ export class DynManager {
         )
     }
 
-    isFlowElement = (element) => {
-        const configName = this.getConfigName(element)
-        const compConfigMeta = this.getConfigByName(configName).meta
-        return this.isConfigFlowType(compConfigMeta.id);
-    }
+   
 
     getConfigName(element) {
         return element.meta.configName;
-    }
-
-    isContainerElement (element) {
-        const configName = element.meta.configName;
-        const compConfigMeta = this.getConfigByName(configName).meta
-        return (
-            compConfigMeta.id === PAGE_CONFIG_NAME
-            || compConfigMeta.id === MODEL_CONFIG_NAME
-        )
-    }
-
-
-    isViewOnlyElement(data) {
-        const configName = data.meta.configName;
-        return this.getConfigByName(configName).meta.viewOnly
-    }
-
-    isViewOperationElement(data) {
-        const configName = data.meta.configName;
-        return this.getConfigByName(configName).meta.viewOperation
-    }
-
-    isOperationOnlyElement(data) {
-        const configName = data.meta.configName;
-        return this.getConfigByName(configName).meta.operationOnly
     }
 
     elementMenuItems(element) {
         const configName = element.meta.configName;
         return clone(this.getConfigByName(configName).menuItems);
     }
-
 }
 
 export default DynManager;

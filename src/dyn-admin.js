@@ -4,9 +4,10 @@ import DynManager from './js/component/core/dyn-manager';
 import ModelExplorer from './js/component/core/model-explorer';
 import { Stage } from './js/component/editor/index';
 import { describeId, clone } from './js/common/helpers'
+import { _isFunction, _isEqual } from './js/common/utils'
 import { componentsConfig, componentGroups, validationRules } from './js/components-config'
 import { Action } from './js/component/constants'  
-import { IODataBinder, getIODataBinderTestData } from './js/component/property/io-data-binder'
+import { IOParameterBinder } from './js/component/property/io-data-binder'
 import Modal from './js/component/modal';
 
 import './css/react-contextmenu.css';
@@ -150,7 +151,10 @@ class DynAdmin extends Component {
   }
 
   shouldComponentUpdate(nextProps, nextState) {
-   
+    if(nextState.openModal !== this.state.openModal) {
+      return true;
+    }
+    
     if(nextState.action !== this.state.action) {
       switch(nextState.action) {
         case Action.Load: {
@@ -192,24 +196,71 @@ class DynAdmin extends Component {
   }
 
   handleIOBinding = (flowDataId) => {
-    
-    const flowData = this.model.get(flowDataId);
+    const model = this.model;
+    const flowData = model.get(flowDataId);
     const srcO = this.mgr.getElementIO(this.model, flowData.source).output;
-    const trgI = this.mgr.getElementIO(this.model, flowData.target).input;
+    const tgtI = this.mgr.getElementIO(this.model, flowData.target).input;
     
-    const binderProps = {
-      key: flowData.id,
-      parameters: flowData,
-      source: this.model.get(flowData.source),
-      target: this.model.get(flowData.target),
-      sourceData: srcO,
-      targetData: trgI,
+    const panelContentRefs = new Map();
+    const registerPanelContent = function(id, instanceRef) {
+      if(instanceRef === null || instanceRef === undefined) {
+          return;
+      }
+      panelContentRefs.set(id, instanceRef);
     }
+
+    const hasUnsavedChanges = function() {
+      const errorsMap = new Map()
+      let failed = false;
+      panelContentRefs.forEach((contentInstance, contentId) => {
+        if(contentInstance.hasUnsavedChanges()) {
+          errorsMap.set(contentId, ["Has unsaved changes"])
+          failed = true;
+        }
+      })
+      return {
+        failed: failed,
+        errors: errorsMap
+      }
+    }
+
+    const handleIOSave = function() {
+      const allNewPropagations = []
+      panelContentRefs.forEach((contentInstance, contentId) => {
+        const newPropagations = contentInstance.save();
+        allNewPropagations.push(...newPropagations)
+      })
+
+      // @todo use command pattern for feature "undo/redo"
+      const oldFlowData = model.copy(flowDataId);
+      console.log(`Old flow data`, oldFlowData);
+      model.get(flowDataId).propagations = allNewPropagations;
+      const newFlowData =  model.get(flowDataId);
+      console.log(`New flow data`, newFlowData);
+    }
+
+    const binderProps = {
+      contentId: flowDataId.id,
+      kdey: flowData.id,
+      flowData: flowData,
+      sourceParams: srcO,
+      targetParams: tgtI,
+      propagations: flowData.propagations || [],
+      sourceTitle: this.model.get(flowData.source).name,
+      targetTitle: this.model.get(flowData.target).name,
+    }
+
     this.setState({
       openModal: true,
-      modalData: (
-          <IODataBinder {...binderProps}/>
-      ),
+      modalData: {
+        validateCancel: hasUnsavedChanges,
+        onConfirmCancel: null,
+        onSave: handleIOSave,
+        content: (
+          <IOParameterBinder {...binderProps}
+            ref={instance => registerPanelContent(binderProps.contentId, instance)} />
+        )
+      },
     })
 
     /*<NavTab key={`NAV_T_${flowDataId}`}>
@@ -237,11 +288,42 @@ class DynAdmin extends Component {
     }*/
   }
 
+  isModalActive = () => {
+    return this.state.openModal;
+  }
+
   handleSaveAndCloseModal = () => {
-    this.handleCloseModal();
+    
+    console.log(`Handle modal save and close`)
+    if(this.isModalActive()) {
+      const { modalData } = this.state;
+      if(modalData.onSave) {
+        modalData.onSave()
+      }
+      this.handleCloseModal()
+    }
+  }
+
+  handleCancelModal = () => {
+    console.log(`handleCloseOnlyModal`)
+    if(this.isModalActive()) { 
+      const { modalData } = this.state;
+      if(_isFunction(modalData.validateCancel)) {
+        const validationResult = modalData.validateCancel();
+        if(validationResult.failed) {
+          alert(`Failed validation cancel`)
+          // @todo show confirm dialog
+        } else {
+          this.handleCloseModal();
+        }
+      } else {
+        this.handleCloseModal();
+      }
+    }
   }
 
   handleCloseModal = () => {
+    console.log(`Do close`)
     this.setState({
       action: Action.Load,
       openModal: false,
@@ -301,6 +383,18 @@ class DynAdmin extends Component {
     });
   }
 
+  handleLogJSON = () => {
+    console.log(JSON.stringify(this.model.json))
+  }
+  
+  toolbar() {
+    return (
+      <nav class="navbar navbar-light bg-light">  
+        <button class="btn btn-outline-primary" type="button" onClick={this.handleLogJSON}>Log JSON</button>
+      </nav>
+    );
+  }
+
   
   render() {    
     let propertiesPanel= {}
@@ -322,6 +416,9 @@ class DynAdmin extends Component {
         <header id="dyn-admin-header">
         </header>
         <div className="">
+          <div class="toolbar">
+            {this.toolbar()}
+          </div>
           <div className="row" style={{position: 'absolute', 'width':'100%', height:'100%'}}>
             <div className="doc docLeft col-4" style={{ padding: 0 }}>
               <Panel key={`Explorer_${this.model.id}`} title='Project explorer' className="vars-cexprs-holder" style={{height:'60%'}}>
@@ -364,10 +461,10 @@ class DynAdmin extends Component {
             isOpen={this.state.openModal} 
             modalBackdrop={this.props.modalBackdrop}
             modalRoot={this.props.modalRoot}
-            onClose={this.handleCloseModal}
+            onClose={this.handleCancelModal}
             onSave={this.handleSaveAndCloseModal}
         >
-          {this.state.modalData}
+          {this.state.modalData ? this.state.modalData.content : null }
         </Modal>
       </div>
     );

@@ -39,11 +39,9 @@ export function makeStageItem(Item, eventListeners) {
             super(props)
             this.myRef = React.createRef();
             this.initialStyle = this.props.style;
-            const { jsPlumbInstance } = props;
             this.state = {
-                jsPlumbInstance,
                 initialised: false,
-                children: this.props.children ? this.props.children : [],
+                children: this.props.children,
                 data: this.props.data,
                 event: StageItemEvent.NONE,
                 eventData: null,
@@ -70,12 +68,13 @@ export function makeStageItem(Item, eventListeners) {
         }
 
         addChildren(children) {
-            if(!this.state.children.length) return;
+            if(!this.props.isContainer) return;
             console.log(`${this.getStageId()}Add new child`)
             const newChildren =  this.state.children.concat(children);
             this.setState({
-                children: newChildren,
                 event: StageItemEvent.RENDER_CHILDREN,
+                children: newChildren,
+               
             })
         }
 

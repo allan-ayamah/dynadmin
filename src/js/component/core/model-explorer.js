@@ -81,8 +81,9 @@ export class ModelExplorer extends React.Component {
         const tree = [];
         if(data.id) {
             tree.push(this.treeItem(data));
-            // @todo order children 
-            const children = this.mgr.findElements(data);
+            // @todo order children
+            const helper = this.props.model.getComponentHelper(data.id); 
+            const children = helper.getSubcomponents();
             if(children.length > 0) {
                 const nextLevel = currLevel + 1;
                 const childItems = [];

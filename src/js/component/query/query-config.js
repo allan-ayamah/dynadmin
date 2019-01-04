@@ -1,5 +1,5 @@
 import { DATA_TYPES } from '../constants';
-import { generateInputOutput } from '../../common/utils';
+import { generateInputOutput, _forEach } from '../../common/utils';
 
 const QUERY_MODE = {
     SELECT: 'select',
@@ -150,6 +150,36 @@ export const queryConfig = {
             }
         });
         return generateInputOutput(data.meta.localId, outputElements);
+    },
+    logic: (component) => {
+        const descr = {
+            service: "com.atena.dynzilla.component.utilities.QueryComponentService",
+            name: component.name,
+            databaseId: component.database,
+            mode: component.mode,
+            queryText: component.queryText,
+            maxResult: component.maxResult,
+            blockFactor: component.blockFactor,
+            blockWindow: component.blockWindow
+        }
+        const inputs = [];
+        _forEach(component.queryInputs, (qInput) => {
+            inputs.push({
+                id: qInput.meta.localId, 
+                dataType: qInput.dataType, 
+                required: qInput.required,
+            })
+        });
+        descr.inputs = inputs;
+        const outputs = [];
+        _forEach(component.queryOutputs, (qO) => {
+            outputs.push({
+                id: qO.meta.localId, 
+                dataType: qO.dataType, 
+            })
+        })
+        descr.outputs = outputs;
+        return descr;
     }
 };
 

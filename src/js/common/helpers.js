@@ -3,9 +3,9 @@ import lodashSet from 'lodash/set';
 import cloneDeep from 'lodash/cloneDeep';
 import lodashIsEquals from 'lodash/isEqual'
 
+
 export const get = lodashGet
 export const set = lodashSet
-export const clone = cloneDeep 
 export const isEqual = lodashIsEquals
 
 export const describeId = (childId) => {
@@ -30,6 +30,7 @@ export const describeId = (childId) => {
 export const h = {
     get,
     set,
+    isEqual
 }
 
-export default { describeId, h, isEqual };
+export { cloneDeep as clone, cloneDeep }

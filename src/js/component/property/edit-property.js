@@ -51,6 +51,7 @@ export function Input(props){
             onBlur={(evt) => props.onUpdate(props.id, evt.target.value)} 
         />
     )
+    
 
 }
 
@@ -118,4 +119,76 @@ export function Select(props) {
             {options}
         </select>
     );
+}
+
+
+
+function Dropdown(props) {
+    const { options } = props;
+    
+    const renderLabel = (option) => {
+        return option.label;
+    }
+
+    const handleChoose = (value) => {
+
+    }
+
+    return (
+        <div className="select-options">
+            {options.map(option => {
+                return (
+                    <div className="select-item" 
+                        data-value={option.value} 
+                        onClick={(e) => handleChoose(option.value)}>
+                        {renderLabel(option)}
+                    </div>
+                );
+            })}
+        </div>
+
+    );
+}
+export class SelectOrInput extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+            id: props.id,
+            selectedValue: "",
+            inputValue: "",
+            label: "",
+            showInput: false
+        }
+    }
+
+    handleSelect = (newValue) =>{
+        /*if(newValue === "") {
+            this.setState({
+                showInput: true,
+                selectedValue: "",
+            })
+        } else {
+            this.setState({
+                showInput: false,
+                selectedValue: newValue
+            })
+        }*/
+    }
+
+    render() {
+        const inputName = this.props.id;
+        const inputId = inputName;
+        return(
+            <div className="select-control">
+                <div className="select-input">
+                    <input name={inputName} type="string"></input>
+                </div>
+                <span className="select-arrow-zone">
+                    <span className="select-arrow"></span>
+                </span>
+                
+            </div>
+        );
+    }
+    
 }

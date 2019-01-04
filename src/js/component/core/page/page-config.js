@@ -9,6 +9,7 @@ export const pageConfig = {
         namePrefix: 'Page',
         label: 'Page',
         icon: 'page',
+        isPage: true,
         style: {
             minWidth: 100,
         }
