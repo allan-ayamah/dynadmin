@@ -53,7 +53,7 @@ export const formConfig = {
         });
         return generateInputOutput(data.meta.localId, fieldElements);
     },
-    logic: (component, dyn) => {
+    logic: function(component, dyn) {
         const descr = {
             service: "com.atena.dynzilla.component.view.FormComponent",
         }
@@ -88,7 +88,7 @@ export const formConfig = {
                 allFields.push(fieldDescr);
             })    
         }
-
+        descr.fields = allFields;
         processFieldType(component.fields, "Field");
         processFieldType(component.selectionFields, "SelectionField");
         return descr;

@@ -12,6 +12,12 @@ export const queryInputConfig = {
         namePrefix: 'Query Input',
         label: 'Query Input',
         icon: 'query-input',
+        flowSource: true,
+        targetSource: true,
+        isViewOperation: true,
+        maxOKLink: 1,
+        maxKOLink: 1,
+        maxNormalLink: -1,
     },
     properties: {
         name: {

@@ -5,6 +5,7 @@ import _forEach from "lodash/forEach"
 import _get from "lodash/get"
 import _set from "lodash/set"
 import _cloneDeep from "lodash/cloneDeep";
+import _isString from "lodash/isString";
 /**
  * Return an array of object
  * @param {Array[DynElement]} elements 
@@ -28,11 +29,12 @@ const _getLocalId = (childId) => {
 
 export { 
     s as StringUtils,
+    _isString,
     _isFunction,
     _isEqual,
     _forEach,
     _getLocalId,
     _cloneDeep,
     _get,
-    _set
+    _set,
 }

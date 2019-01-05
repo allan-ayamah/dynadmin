@@ -1,4 +1,5 @@
 import Model from './model';
+import ModelGenerator from "js/generator";
 import { 
     DEFAULT_COMPONENTS_CONFIG, 
     MODEL_CONFIG_NAME, 
@@ -50,6 +51,10 @@ export class DynManager {
         //Create default page
         this.createElement(model, model.id, PAGE_CONFIG_NAME);
         return model;
+    }
+
+    loadModel(jsonModel) {
+        return Model.fromJson(this, jsonModel);
     }
 
     /**
@@ -133,10 +138,20 @@ export class DynManager {
             // add links
             if(config.meta.flowSource === true) {
                 config.allowedLinks.add(this.NormalLinkName);
+                config.meta.maxNormalLink = -1;
                 if(config.meta.operationOnly === true  
                     || config.meta.viewOperation) {
                     config.allowedLinks.add(this.OKLinkName);
                     config.allowedLinks.add(this.KOLinkName);
+                    if(config.meta.maxOKLink === undefined
+                        || config.meta.maxOKLink === null) {
+                        config.meta.maxOKLink = 1;
+                    }
+
+                    if(config.meta.maxKOLink === undefined
+                        || config.meta.maxKOLink === null) {
+                        config.meta.maxKOLink = 1;
+                    }
                 }
             }
             if(config.allowedLinks.size > 0) {
@@ -180,6 +195,7 @@ export class DynManager {
                 config.allowedLinks.forEach((linkName) => {
                     config.scConfigToSegmentMap.set(linkName, "outgoingLinks");
                 })
+                console.log(`THAT MAP`, config.scConfigToSegmentMap)
             }
 
             config.canInclude = (cfName) => {
@@ -266,10 +282,13 @@ export class DynManager {
      * @returns {Object}
      */
     createElement(model, parentId, configName) {
+        if(this.isNormalLink(configName)) {
+            alert(`IS link: ${configName}`)
+        }
         if(!parentId) {
             throw new Error(`Invalid parent id ${parentId}`);
         }
-        const parentComponent = model.get(parentId);
+        const parentComponent = model.getComponent(parentId);
         if(parentComponent === undefined) {
             throw new Error(`Data can not be found for parent id: ${parentId}`);
         }
@@ -303,8 +322,8 @@ export class DynManager {
     }
 
     getElementIO = (model, elementId) => {
-        const element = model.get(elementId);
-        const children = this.findElements(element)
+        const element = model.getComponent(elementId);
+        const children = model.getComponentHelper(elementId).getSubcomponents();
         const componentConf = this.getConfigByName(element.meta.configName);
         const inputGenerator = componentConf.input;
         let inputResult, outputResult;
@@ -395,29 +414,6 @@ export class DynManager {
         model.set(`${dataId}.meta.minWidth`, posData.minWidth);
         model.set(`${dataId}.meta.minHeight`, posData.minHeight);
     }
-
-    /**
-     * Returns true if the element can be placed on stage
-     * @param {Element} element --the element
-     */
-    isStageElement(element) {
-        const configName = element.meta.configName;
-        const compConfigMeta = this.getConfigByName(configName).meta
-        return (
-            compConfigMeta.viewOnly 
-            || compConfigMeta.viewOperation 
-            || compConfigMeta.operationOnly
-            || compConfigMeta.id === PAGE_CONFIG_NAME
-            || compConfigMeta.id === FLOW_CONFIG_NAME
-        )
-    }
-
-    isConfigFlowType = (configName) =>{
-        return (
-            configName === FLOW_CONFIG_NAME
-        )
-    }
-
    
 
     getConfigName(element) {
@@ -428,6 +424,30 @@ export class DynManager {
         const configName = element.meta.configName;
         return clone(this.getConfigByName(configName).menuItems);
     }
+
+    generateModel(model, startId) {
+        const generator = new ModelGenerator(model, startId);
+        generator.generateOperation(startId);
+        return generator.getDescriptor();
+    }
+
+    isLink(model, configName) {
+        return this.linkNames.has(configName);
+    }
+
+    isNormalLink(model, configName) {
+        return configName === this.isNormalLink;
+    }
+
+    isOKLink(model, configName) {
+        return configName === this.OKLinkName;
+    }
+
+    isKOLink(model, configName) {
+        return configName === this.KOLinkName;
+    }
+
+    
 }
 
 export default DynManager;

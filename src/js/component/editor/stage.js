@@ -192,7 +192,7 @@ export class Stage extends React.Component {
                 if(compHelper.isStageComponent()) {
                     // alert("Create new item")
                     const instance = this.createStageItem(data);
-                    if(this.mgr.isFlowElement(data)) {
+                    if(compHelper.isLink()) {
                         console.log(`INIt NEW FLOW`, data);
                         this.initFlow(instance.stageId);
                         this.state.jsPlumbInstance.repaintEverything();
@@ -286,7 +286,7 @@ export class Stage extends React.Component {
             }
 
             p.connection.bind("dblclick", (c) => {
-                //console.log("DB C", e.getData())
+                console.log("DB C", c.getData())
                 _this.props.onInitDataBinding(c.getData().dataId)
             });
         });
@@ -704,8 +704,12 @@ export class Stage extends React.Component {
     }
 
     canStartFlow(stageItemId, e, el) {
-        return (this.state.stageAction === StageAction.FLOW_DRAW_BEGIN
-                && this.state.stageItemId === stageItemId)
+        if(!(this.state.stageAction === StageAction.FLOW_DRAW_BEGIN
+            && this.state.stageItemId === stageItemId)) {
+            return false;
+        }
+
+        return true;
     }
 
        // @todo implement update stage Item id
@@ -746,15 +750,31 @@ export class Stage extends React.Component {
 
     initFlow = (stageId) => {
         const stageFlow = this.flows[stageId];
-        const flowData = this.model.get(stageFlow.dataId)
+        const flowData = this.model.getComponent(stageFlow.dataId);
+        const helper = this.model.getComponentHelper(flowData.id);
         const srcStageItem = this.getStageItemByDataId(flowData.source).ref.current
         const trgStageItem = this.getStageItemByDataId(flowData.target).ref.current
         const srcId = srcStageItem.getStageId()
         const trgId = trgStageItem.getStageId();
-         this.state.jsPlumbInstance.connect({
+
+        let paintStyle = { 
+            stroke: "black",
+        }
+        if(helper.isOKLink()) {
+            paintStyle = {
+                stroke : "green"
+            }
+        } else if(helper.isKOLink()) {
+            paintStyle = {
+                stroke : "red",
+            }
+        }
+
+        this.state.jsPlumbInstance.connect({
             id: stageId,
             source: srcId, 
-            target: trgId
+            target: trgId,
+            paintStyle: paintStyle,
         }, 
         { 
             data: {

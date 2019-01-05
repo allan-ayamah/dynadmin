@@ -13,6 +13,8 @@ import Modal from './js/component/modal';
 import './css/react-contextmenu.css';
 import './css/dyn-admin.css';
 
+import TEST_MODEL from "./model1.json";
+
 
 function Panel(props) {
   let wrapClassName = ['panel','card', props.className]; 
@@ -32,6 +34,7 @@ export const TRANSIENT_FLOW_DATA_ID = "TRANSIENT_FLOW_DATA_ID";
 function createTransientFlowData(sourceId, componentId) {
   return {
     id: TRANSIENT_FLOW_DATA_ID,
+    configName: componentId,
     componentId: componentId,
     source: sourceId,
     target: "",
@@ -95,49 +98,9 @@ class DynAdmin extends Component {
       components: [...componentsConfig, ...validationRules],
     }
 
+    const loadedStringModel = JSON.stringify(TEST_MODEL);
     this.mgr = new DynManager(opts);
-    this.model = this.mgr.createModel(1, 'Dynamic model 3');
-    const page1 = this.model.get('mdl1.pages.page1')
-
-    this.mgr.updateComponentPos(this.model, this.model.id, {
-      top: 26,
-      left: 0,
-      minWidth: 565.926,
-      minHeight: 281.773,
-    });
-
-    this.mgr.updateComponentPos(this.model, page1.id, {
-      top: 26,
-      left: 0,
-      minWidth: 545.926,
-      minHeight: 198.773,
-    });
-
-    const form1 = this.mgr.createElement(this.model, page1.id, 'form')
-    console.log("HERE", form1)
-    this.mgr.updateComponentPos(this.model, form1.id, {
-      top: 36,
-      left: 107
-    });
-    const field1 = this.mgr.createElement(this.model, form1.id, 'fld')
-    const selectionField1 = this.mgr.createElement(this.model, form1.id, 'sfld')
-
-    const query1 = this.mgr.createElement(this.model, page1.id, 'query');
-    this.mgr.updateComponentPos(this.model, query1.id, {
-      top: 30,
-      left: 359,
-    });
-    this.mgr.createElement(this.model, query1.id, 'qryI');
-    this.mgr.createElement(this.model, query1.id, 'qryI');
-    
-    const flow1 = this.mgr.createElement(this.model, query1.id, 'flow')
-    flow1.source=form1.id;
-    flow1.target=query1.id;
-   
-    const var1 = this.mgr.createElement(this.model, page1.id, 'var')
-    const var2 = this.mgr.createElement(this.model, page1.id, 'var')
-
-     //console.log(this.model.data)
+    this.model = this.mgr.loadModel(loadedStringModel);
     this.state = {
       action: Action.Load,
       actionData: null,
@@ -146,8 +109,7 @@ class DynAdmin extends Component {
       propsPanelData: null,
     };
 
-    this.handleCreateElement = this.handleCreateElement.bind(this);
-    console.log(`MODEL DATA`, clone(this.model.data))
+    //console.log(`MODEL DATA`, clone(this.model.data))
   }
 
   shouldComponentUpdate(nextProps, nextState) {
@@ -333,7 +295,7 @@ class DynAdmin extends Component {
   }
 
   handleCreateElement = (parentElId, componentId) => {
-    if(this.mgr.isConfigFlowType(componentId)) {
+    if(this.mgr.isLink(this.model, componentId)) {
       this.setState({
         action: Action.FLOW_DRAW_BEGIN,
         actionData: createTransientFlowData(parentElId, componentId)
@@ -386,11 +348,17 @@ class DynAdmin extends Component {
   handleLogJSON = () => {
     console.log(JSON.stringify(this.model.json))
   }
+
+  handleGenerate = () => {
+    const data = this.mgr.generateModel(this.model, this.generateStartId);
+    console.log(JSON.stringify(data.json))
+  }
   
   toolbar() {
     return (
       <nav class="navbar navbar-light bg-light">  
         <button class="btn btn-outline-primary" type="button" onClick={this.handleLogJSON}>Log JSON</button>
+        <button class="btn btn-primary" type="button" onClick={this.handleGenerate}>Generate</button>
       </nav>
     );
   }

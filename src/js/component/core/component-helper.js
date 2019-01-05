@@ -1,5 +1,5 @@
 import DynAdminService, { ADMIN_LOG_TYPE } from "js/common/dynadmin-service";
-import { _isFunction, _forEach } from "js/common/utils";
+import { _isFunction, _forEach, _isString } from "js/common/utils";
 
 export default class ComponentHelper extends DynAdminService {
     constructor(model, fullId, componentConfig) {
@@ -19,12 +19,22 @@ export default class ComponentHelper extends DynAdminService {
      * 
      * @param {ComponentDefinition} component -- the component
      */
-    forEachSubcomponent = (callback) => {
+    forEachSubcomponent = (callback, segments) => {
         if(!_isFunction(callback)) {
             return;
         }
         const component = this.model.getComponent(this.fullId);
-        this.config.segments.forEach(scName => {
+        let actualSegments = []
+        if(segments === undefined || segments === null) {
+            actualSegments = this.config.segments;
+        } else {
+            if(_isString(segments)) {
+                actualSegments = [segments];
+            } else if(Array.isArray(segments)) {
+                actualSegments = Array.from(segments);
+            }
+        }
+        actualSegments.forEach(scName => {
             const scEntries = component[scName];
             if(scName && scEntries) {
                 _forEach(scEntries, (subcomponent) => {
@@ -47,23 +57,23 @@ export default class ComponentHelper extends DynAdminService {
     }
 
     isPage() {
-        return this.config.isPage();
+        return this.config.meta.isPage ?  true : false;
     }
 
     isOKLink() {
-        return this.config.meta.isOKLink ? true : false;
+        return this.mgr.isOKLink(this.model, this.config.meta.id);
     }
 
     isKOLink() {
-        return this.config.meta.isKOLink ? true : false;
+        return this.mgr.isKOLink(this.model, this.config.meta.id);
     }
 
     isNormalLink() {
-        return this.config.meta.isNormalLink ? true : false;
+        return this.mgr.isNormalLink(this.model, this.config.meta.id);
     }
 
     isLink() {
-        return this.isNormalLink() || this.isOKLink() || this.isKOLink()
+        return this.mgr.isLink(this.model, this.config.meta.id);
     }
 
     isContainer() {
@@ -78,5 +88,9 @@ export default class ComponentHelper extends DynAdminService {
         if(this.isLink() || this.isContainer() || this.isUnitComponent())
             return true;
         return false;
+    }
+
+    getLogic(reqired) {
+        return this.config.logic;
     }
 }

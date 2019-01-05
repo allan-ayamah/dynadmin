@@ -1,15 +1,30 @@
 import DynAdminService, { ADMIN_LOG_TYPE } from "js/common/dynadmin-service";
 import ComponentHelper from './component-helper';
-import { _cloneDeep, _get, _set } from "js/common/utils"
+import { _cloneDeep, _get, _set, _has } from "js/common/utils"
 
 export default class Model extends DynAdminService {
     constructor(id, data, mgr) {
         super(mgr);
         this.id = id;
-        this._data =  Object.assign({}, { 
-            [id]: data 
-        })
+        if(data[id] === undefined || data[id] === null) {
+            this._data =  Object.assign({}, { 
+                [id]: data 
+            })
+        } else{
+            this._data = data;
+        } 
         this.componentHelpers = new Map();   
+    }
+
+    static fromJson(mgr, json) {
+        const data = JSON.parse(json);
+        const keys = Object.keys(data);
+        if(keys.length == 0 || keys.length > 1){
+            console.log(`Invalid model`);
+            throw new Error(`could invalid model`);
+        }
+        const id = keys[0];
+        return new Model(id, data, mgr)
     }
 
     getComponent(fullId) {
@@ -19,7 +34,7 @@ export default class Model extends DynAdminService {
     getComponentHelper(fullId) {
         const id = fullId;
         let helper = this.componentHelpers.get(id); 
-        if(helper === undefined) {
+        if(helper === undefined || helper == null) {
             const component = this.getComponent(fullId);
             const config = this.mgr.getConfigByName(component.meta.configName);
             helper = new ComponentHelper(this, fullId, config);

@@ -1,0 +1,288 @@
+{
+    "mdl1": {
+        "id": "mdl1",
+        "meta": {
+            "configName": "mdl",
+            "fld": {
+                "nextValue": 2
+            },
+            "flow": {
+                "nextValue": 2
+            },
+            "form": {
+                "nextValue": 2
+            },
+            "koln": {
+                "nextValue": 2
+            },
+            "left": 0,
+            "localId": "mdl1",
+            "minHeight": 438,
+            "minWidth": 813,
+            "okln": {
+                "nextValue": 4
+            },
+            "page": {
+                "nextValue": 2
+            },
+            "qryI": {
+                "nextValue": 3
+            },
+            "query": {
+                "nextValue": 4
+            },
+            "sfld": {
+                "nextValue": 2
+            },
+            "top": 26,
+            "var": {
+                "nextValue": 3
+            }
+        },
+        "name": "Dynamic model 3",
+        "pages": {
+            "page1": {
+                "contentComponents": {
+                    "form1": {
+                        "fields": {
+                            "fld1": {
+                                "dataType": "string",
+                                "id": "mdl1.pages.page1.contentComponents.form1.fields.fld1",
+                                "meta": {
+                                    "configName": "fld",
+                                    "left": 0,
+                                    "localId": "fld1",
+                                    "parentId": "mdl1.pages.page1.contentComponents.form1",
+                                    "top": 0
+                                },
+                                "name": "Field1",
+                                "preloaded": false,
+                                "readOnly": false
+                            }
+                        },
+                        "id": "mdl1.pages.page1.contentComponents.form1",
+                        "meta": {
+                            "configName": "form",
+                            "left": 107,
+                            "localId": "form1",
+                            "parentId": "mdl1.pages.page1",
+                            "top": 36
+                        },
+                        "name": "Form1",
+                        "outgoingLinks": {
+                            "flow1": {
+                                "id": "mdl1.pages.page1.contentComponents.form1.outgoingLinks.flow1",
+                                "meta": {
+                                    "configName": "flow",
+                                    "left": 0,
+                                    "localId": "flow1",
+                                    "parentId": "mdl1.pages.page1.contentComponents.form1",
+                                    "top": 0
+                                },
+                                "name": "Flow1",
+                                "source": "mdl1.pages.page1.contentComponents.form1",
+                                "target": "mdl1.pages.page1.contentComponents.query1",
+                                "type": "nav",
+                                "validate": true
+                            }
+                        },
+                        "selectionFields": {
+                            "sfld1": {
+                                "dataType": "string",
+                                "id": "mdl1.pages.page1.contentComponents.form1.selectionFields.sfld1",
+                                "meta": {
+                                    "configName": "sfld",
+                                    "left": 0,
+                                    "localId": "sfld1",
+                                    "parentId": "mdl1.pages.page1.contentComponents.form1",
+                                    "top": 0
+                                },
+                                "name": "Selection field1",
+                                "preloaded": false,
+                                "readOnly": false
+                            }
+                        }
+                    },
+                    "query1": {
+                        "database": "icare",
+                        "id": "mdl1.pages.page1.contentComponents.query1",
+                        "meta": {
+                            "configName": "query",
+                            "left": 359,
+                            "localId": "query1",
+                            "parentId": "mdl1.pages.page1",
+                            "top": 30
+                        },
+                        "mode": "select",
+                        "name": "Query1",
+                        "outgoingLinks": {
+                            "koln1": {
+                                "id": "mdl1.pages.page1.contentComponents.query1.outgoingLinks.koln1",
+                                "meta": {
+                                    "configName": "koln",
+                                    "left": 0,
+                                    "localId": "koln1",
+                                    "parentId": "mdl1.pages.page1.contentComponents.query1",
+                                    "top": 0
+                                },
+                                "name": "KOLink1",
+                                "source": "mdl1.pages.page1.contentComponents.query1",
+                                "target": "mdl1.pages.page1.contentComponents.query3",
+                                "type": "nav",
+                                "validate": true
+                            },
+                            "okln1": {
+                                "id": "mdl1.pages.page1.contentComponents.query1.outgoingLinks.okln1",
+                                "meta": {
+                                    "configName": "okln",
+                                    "left": 0,
+                                    "localId": "okln1",
+                                    "parentId": "mdl1.pages.page1.contentComponents.query1",
+                                    "top": 0
+                                },
+                                "name": "OKLink1",
+                                "source": "mdl1.pages.page1.contentComponents.query1",
+                                "target": "mdl1.pages.page1.contentComponents.query2",
+                                "type": "nav",
+                                "validate": true
+                            }
+                        },
+                        "queryInputs": {
+                            "qryI1": {
+                                "dataType": "",
+                                "id": "mdl1.pages.page1.contentComponents.query1.queryInputs.qryI1",
+                                "meta": {
+                                    "configName": "qryI",
+                                    "left": 0,
+                                    "localId": "qryI1",
+                                    "parentId": "mdl1.pages.page1.contentComponents.query1",
+                                    "top": 0
+                                },
+                                "name": "Query Input1",
+                                "required": true
+                            },
+                            "qryI2": {
+                                "dataType": "",
+                                "id": "mdl1.pages.page1.contentComponents.query1.queryInputs.qryI2",
+                                "meta": {
+                                    "configName": "qryI",
+                                    "left": 0,
+                                    "localId": "qryI2",
+                                    "parentId": "mdl1.pages.page1.contentComponents.query1",
+                                    "top": 0
+                                },
+                                "name": "Query Input2",
+                                "required": true
+                            }
+                        }
+                    },
+                    "query2": {
+                        "database": "icare",
+                        "id": "mdl1.pages.page1.contentComponents.query2",
+                        "meta": {
+                            "configName": "query",
+                            "left": 627,
+                            "localId": "query2",
+                            "minHeight": 103,
+                            "minWidth": 146,
+                            "parentId": "mdl1.pages.page1",
+                            "top": 63
+                        },
+                        "mode": "select",
+                        "name": "Query2",
+                        "outgoingLinks": {
+                            "okln3": {
+                                "id": "mdl1.pages.page1.contentComponents.query2.outgoingLinks.okln3",
+                                "meta": {
+                                    "configName": "okln",
+                                    "left": 0,
+                                    "localId": "okln3",
+                                    "parentId": "mdl1.pages.page1.contentComponents.query2",
+                                    "top": 0
+                                },
+                                "name": "OKLink3",
+                                "source": "mdl1.pages.page1.contentComponents.query2",
+                                "target": "mdl1.pages.page1.contentComponents.form1",
+                                "type": "nav",
+                                "validate": true
+                            }
+                        }
+                    },
+                    "query3": {
+                        "database": "icare",
+                        "id": "mdl1.pages.page1.contentComponents.query3",
+                        "meta": {
+                            "configName": "query",
+                            "left": 427,
+                            "localId": "query3",
+                            "minHeight": 103,
+                            "minWidth": 146,
+                            "parentId": "mdl1.pages.page1",
+                            "top": 195
+                        },
+                        "mode": "select",
+                        "name": "Query3",
+                        "outgoingLinks": {
+                            "okln2": {
+                                "id": "mdl1.pages.page1.contentComponents.query3.outgoingLinks.okln2",
+                                "meta": {
+                                    "configName": "okln",
+                                    "left": 0,
+                                    "localId": "okln2",
+                                    "parentId": "mdl1.pages.page1.contentComponents.query3",
+                                    "top": 0
+                                },
+                                "name": "OKLink2",
+                                "source": "mdl1.pages.page1.contentComponents.query3",
+                                "target": "mdl1.pages.page1.contentComponents.query2",
+                                "type": "nav",
+                                "validate": true
+                            }
+                        }
+                    }
+                },
+                "id": "mdl1.pages.page1",
+                "meta": {
+                    "configName": "page",
+                    "left": 0,
+                    "localId": "page1",
+                    "minHeight": 355,
+                    "minWidth": 793,
+                    "parentId": "mdl1",
+                    "top": 26
+                },
+                "name": "Page1",
+                "variables": {
+                    "var1": {
+                        "component": "",
+                        "dataType": "",
+                        "id": "mdl1.pages.page1.variables.var1",
+                        "meta": {
+                            "configName": "var",
+                            "left": 0,
+                            "localId": "var1",
+                            "parentId": "mdl1.pages.page1",
+                            "top": 0
+                        },
+                        "name": "var1",
+                        "parameter": ""
+                    },
+                    "var2": {
+                        "component": "",
+                        "dataType": "",
+                        "id": "mdl1.pages.page1.variables.var2",
+                        "meta": {
+                            "configName": "var",
+                            "left": 0,
+                            "localId": "var2",
+                            "parentId": "mdl1.pages.page1",
+                            "top": 0
+                        },
+                        "name": "var2",
+                        "parameter": ""
+                    }
+                }
+            }
+        }
+    }
+}
