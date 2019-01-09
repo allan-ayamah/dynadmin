@@ -8,11 +8,11 @@ import {
 } from './default-config';
 
 import { clone } from '../../common/helpers';
+import { RESULT_SUCCESS_CODE, RESULT_ERROR_CODE } from '../../common/constants';
 
 const DEFAULT_MANAGER_CONFIG = {
     
 }
-
 
 const MIN_COMPONENT_WIDTH = 12;
 export class DynManager {
@@ -66,11 +66,7 @@ export class DynManager {
         return this.componentConfigs[name];
     }
 
-    filterComponents(callback) {
-        const componentNames = Object.keys(this.componentConfigs);
-        componentNames.filter()
-    }
-
+    
     /**
      * This function registers a new component configuration
      * if the configuration has already been registered @param {overrideAlways}
@@ -163,13 +159,23 @@ export class DynManager {
             if(config.subComponents) {
                 const subComponentKeys = Object.keys(config.subComponents);
                 subComponentKeys.forEach(subCompKey => {
+                    if(subCompKey === null || subCompKey === undefined)
+                        return;
                     config.segments.add(subCompKey);
                     const subComponent = config.subComponents[subCompKey];
                     const subCompConfigName = subComponent.componentConfigName;
                     if(subCompConfigName) {
-                        config.scConfigToSegmentMap.set(subCompConfigName, subCompKey);
-                        config.allowedComponents.push(subCompConfigName)
-                        defaultAddElements.push(subCompConfigName);
+                        if(Array.isArray(subCompConfigName)){
+                            subCompConfigName.forEach((sc) => {
+                                config.scConfigToSegmentMap.set(sc, subCompKey);
+                                config.allowedComponents.push(sc)
+                                defaultAddElements.push(sc);
+                            })
+                        } else {
+                            config.scConfigToSegmentMap.set(subCompConfigName, subCompKey);
+                            config.allowedComponents.push(subCompConfigName)
+                            defaultAddElements.push(subCompConfigName);
+                        }
                     } else if(typeof subComponent.componentExpression === 'function') {
                         const fn = subComponent.componentExpression;
                         componentsName.forEach(cfgName => {
@@ -321,6 +327,23 @@ export class DynManager {
         return model.get(id);
     }
 
+    createLinkElement(model, configName, source, target)  { 
+        const link = this.createElement(model, source, configName);
+        link.source = source;
+        link.target = target;
+        return link;
+    }
+
+    // @Depreacted user model.deleteComponent(compId)
+    deleteElement(model, id) {
+        id.forEach((compId) => {
+            if(!model.deleteComponent(compId)) {
+                return false;
+            }
+        })
+        return true;
+    }
+
     getElementIO = (model, elementId) => {
         const element = model.getComponent(elementId);
         const children = model.getComponentHelper(elementId).getSubcomponents();
@@ -427,7 +450,7 @@ export class DynManager {
 
     generateModel(model, startId) {
         const generator = new ModelGenerator(model, startId);
-        generator.generateOperation(startId);
+        generator.generate(model.id);
         return generator.getDescriptor();
     }
 

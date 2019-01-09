@@ -1,4 +1,4 @@
-import { DATA_TYPES, CONTENT_TYPES} from '../constants';
+import { DATA_TYPES, CONTENT_TYPES} from 'js/common/constants';
 import { SLOT_CONFIG_NAME } from './slot-config';
 
 export const SELECTION_FIELD_CONFIG_NAME = 'sfld';
@@ -8,6 +8,7 @@ export const selectionFieldConfig = {
         namePrefix: 'Selection field',
         label: 'Selection field',
         icon: 'selection-field',
+        isAttribute: true
     },
     properties: {
         name: {

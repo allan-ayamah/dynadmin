@@ -6,6 +6,7 @@ export const slotConfig = {
         namePrefix: 'Slot',
         label: 'Slot',
         icon: 'slot',
+        isAttribute: true
     },
     properties: {
         name: {

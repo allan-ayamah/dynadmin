@@ -1,4 +1,4 @@
-import { PREDICATES } from '../constants';
+import { PREDICATES } from 'js/common/constants';
 
 
 export const manditoryVaidationRuleConfig = {

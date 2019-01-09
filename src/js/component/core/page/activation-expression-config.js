@@ -1,4 +1,4 @@
-import { SCRIPT_TYPE } from '../../constants';
+import { SCRIPT_TYPE } from 'js/common/constants';
 
 export const ACTIVATION_EXPR_CONFIG_NAME = 'actExpr';
 export const activationExpressionConfig = {

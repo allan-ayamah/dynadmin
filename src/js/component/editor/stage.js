@@ -4,7 +4,7 @@ import { jsPlumbConfig } from './stage-config'
 import React from 'react';
 import ReactDOM from 'react-dom'
 import { clone, isEqual } from '../../common/helpers'
-import { Action as ElementAction, Action} from '../../component/constants'  
+import { Action as ElementAction, Action} from '../../common/constants'  
 import { 
     MODEL_CONFIG_NAME, 
     PAGE_CONFIG_NAME, 
@@ -51,7 +51,6 @@ export class Stage extends React.Component {
     constructor(props) {
         super(props);
         this.mgr = props.mgr;
-        this.model = this.props.model;
         this.ref = React.createRef();
 
         this.stageItems = {};
@@ -69,6 +68,10 @@ export class Stage extends React.Component {
             mouseDownPosX: 0,
             mouseDownPosY: 0,
         }
+    }
+
+    get model() {
+        return this.props.model;
     }
 
     componentDidMount() {
@@ -203,6 +206,13 @@ export class Stage extends React.Component {
                 }
                 return false;
             }
+            case Action.DELETE : {
+                const actionData = nextProps.actionData;
+                for(let i = 0; i < actionData.length; i++) {
+                    this.deleteStageItem(actionData[i]);
+                }
+                return false;
+            }
             default:
             break;
         }
@@ -214,22 +224,19 @@ export class Stage extends React.Component {
         console.log("STAGE DID UPDATE", this.stageItems)
 
         if(this.state.isReady && !this.state.initialised) {
-            this.state.jsPlumbInstance.setSuspendDrawing(true);
-            const stageItemKeys = Object.keys(this.stageItems);
-            stageItemKeys.forEach(itemKey => {
-                this.initStageItem(itemKey)
-            })
-
-            // INIT FLOWS
-            const flowIds = Object.keys(this.flows);
-            flowIds.forEach( id => {
-                this.initFlow(id);
-            })
-            this.state.jsPlumbInstance.setSuspendDrawing(false, true);
+            this.initAll();
             this.setState({
                 initialised: true,
             });
+        } else if(this.state.actionData 
+            && this.state.actionData.renderAll) {
+            this.initAll(true);
+            this.setState({
+                action: StageAction.NONE,
+                actionData: null,
+            })
         }
+        
         
     }
 
@@ -606,6 +613,37 @@ export class Stage extends React.Component {
         }      
     }
 
+    deleteStageItem(componentId) {
+        const compHelper = this.model.getComponentHelper(componentId);
+        if(compHelper.isLink()) {
+          return this.deleteLinks(componentId)
+        }
+        const stageId = this.createStageId(componentId);
+        const stageItem = this.getStageItem(stageId);
+        if(stageItem && stageItem.ref) {
+            const itemRef = stageItem.ref.current;
+            const stageIdsToRemove = itemRef.getChildrenStageIds();
+            stageIdsToRemove.push(stageId);
+            
+            let parentRef = stageItem.parentRef;
+            if(parentRef) {
+                parentRef.current.deleteChildren([itemRef.getStageId()])
+            } else {
+                itemRef.delete();
+            }
+            
+            const _this = this;
+            stageIdsToRemove.forEach((scStageId) => {
+                this.state.jsPlumbInstance.setDraggable(stageId, false);
+                const scCompnentId = _this.resolveDataId(scStageId);
+                const compOutLinks = compHelper.getOutgoingLinksIds();
+                this.deleteLinks(compOutLinks);
+                delete this.stageItems[scStageId];
+            })
+        }
+        return true;
+    }
+
     
     createComponentStageItem = (stageId, data, itemRef, level , childItems) => {
         const id = data.id;
@@ -668,7 +706,7 @@ export class Stage extends React.Component {
                 stageId,
                 childrenStageIds: itemRef.getChildrenStageIds()
             }
-            itemRef.jsPlumbObj = j.draggable(itemDOM, {
+            item.jsPlumbObj = j.draggable(itemDOM, {
                 data: data,
                 start: (el) => {
                     console.log(`${stageId} Drag start`, el)
@@ -702,6 +740,7 @@ export class Stage extends React.Component {
             return this.initFlow(stageId)
         }
     }
+
 
     canStartFlow(stageItemId, e, el) {
         if(!(this.state.stageAction === StageAction.FLOW_DRAW_BEGIN
@@ -746,7 +785,28 @@ export class Stage extends React.Component {
             parentRef: parentRef
         }
         return this.stageItems[stageId].ref;
-    }  
+    } 
+    
+    deleteLinks = (componentIds) => {
+        try {
+            let compIds = componentIds;
+            if(!Array.isArray(compIds)) {
+                compIds = [compIds];
+            }
+            const _this = this;
+            compIds.forEach((compId) => {
+                const stageId = this.createStageId(compId);
+                const stageFlow = this.flows[stageId];
+                if(stageFlow) {
+                    _this.state.jsPlumbInstance.deleteConnection(stageFlow.connection);
+                    delete this.flows[stageId];
+                }
+            })
+            return true;
+        } catch(err) {
+            throw new Error(err);
+        }
+    }
 
     initFlow = (stageId) => {
         const stageFlow = this.flows[stageId];
@@ -770,7 +830,7 @@ export class Stage extends React.Component {
             }
         }
 
-        this.state.jsPlumbInstance.connect({
+        stageFlow.connection = this.state.jsPlumbInstance.connect({
             id: stageId,
             source: srcId, 
             target: trgId,
@@ -785,6 +845,21 @@ export class Stage extends React.Component {
 
         //stageFlow.jsPlumbConnectionId = stageFlow.jsPlumbConnection
         //console.log("CONNECT" + stageFlow.jsPlumbConnectionId, stageFlow.jsPlumbConnection)
+    }
+
+    initAll = () => {
+        this.state.jsPlumbInstance.setSuspendDrawing(true);
+        const stageItemKeys = Object.keys(this.stageItems);
+        stageItemKeys.forEach(itemKey => {
+            this.initStageItem(itemKey)
+        })
+
+        // INIT FLOWS
+        const flowIds = Object.keys(this.flows);
+        flowIds.forEach( id => {
+            this.initFlow(id);
+        })
+        this.state.jsPlumbInstance.setSuspendDrawing(false, true);
     }
     
     render() {

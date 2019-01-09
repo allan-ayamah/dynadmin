@@ -1,20 +1,25 @@
 import React, { Component } from 'react';
-import  { EditProperties } from './js/component/property/edit-properties'
-import DynManager from './js/component/core/dyn-manager';
-import ModelExplorer from './js/component/core/model-explorer';
-import { Stage } from './js/component/editor/index';
-import { describeId, clone } from './js/common/helpers'
-import { _isFunction, _isEqual } from './js/common/utils'
-import { componentsConfig, componentGroups, validationRules } from './js/components-config'
-import { Action } from './js/component/constants'  
-import { IOParameterBinder } from './js/component/property/io-data-binder'
-import Modal from './js/component/modal';
+import  { EditProperties } from './property/edit-properties'
+import DynManager from './core/dyn-manager';
+import ModelExplorer from './core/model-explorer';
+import { Stage } from './editor/index';
+import { describeId, clone } from 'js/common/helpers'
+import { _isFunction, _isEqual } from 'js/common/utils'
+import { componentsConfig, componentGroups, validationRules } from '../components-config'
+import { Action } from 'js/common/constants'  
+import { IOParameterBinder } from './property/io-data-binder'
+import Modal from './modal';
 
-import './css/react-contextmenu.css';
-import './css/dyn-admin.css';
+import LayoutPlanner from './core/grid-layout/layout-planner';
 
-import TEST_MODEL from "./model1.json";
+import 'css/react-contextmenu.css';
+import 'css/dyn-admin.css';
 
+import TEST_MODEL from "../../model1.json";
+
+export const UIManager = {
+  LAYOUT_BUILDER: "Layout",
+}
 
 function Panel(props) {
   let wrapClassName = ['panel','card', props.className]; 
@@ -58,14 +63,17 @@ class DynAdmin extends Component {
       },
       delete: {
           name: 'delete',
-          
+          handle: (evt, data) => {
+            const id = data.elementId;
+            this.handleDeleteElement([id]);
+          }
       }, 
       add: {
           name:'add',
           handle: (evt, data) => {
             const parentId = data.elementId;
-            const compoenent = data.componentId
-            this.handleCreateElement(parentId, compoenent)
+            const component = data.componentId
+            this.handleCreateElement(parentId, component)
           }
       } 
     }
@@ -100,16 +108,43 @@ class DynAdmin extends Component {
 
     const loadedStringModel = JSON.stringify(TEST_MODEL);
     this.mgr = new DynManager(opts);
-    this.model = this.mgr.loadModel(loadedStringModel);
+    const model = this.mgr.loadModel(loadedStringModel);
     this.state = {
       action: Action.Load,
       actionData: null,
+      model: model,
+      mgr: model.mgr,
+      modelId: model.id,
+      focusedId: model.id,
+      pageId: "mdl1.pages.page1",
+      dispath: this.dispath,
+      handleElementClick: this.handleEditElementProps,
+      notify: this.handleActionNotification,
       openModal: false,
       modalData: null,
       propsPanelData: null,
     };
 
-    //console.log(`MODEL DATA`, clone(this.model.data))
+    console.log(`MODEL DATA`, JSON.stringify(this.model.getComponentHelper("mdl1.pages.page1").getNormalizedData()));
+  }
+
+  get model() {
+    return this.state.model;
+  }
+
+ 
+  componentDidUpdate(prevProps, prevState) {
+    if(this.state.action === Action.DELETE) {
+      const deleted = this.mgr.deleteElement(this.model, this.state.actionData);
+      this.setState({
+        action: Action.DELETE_SUCCESS,
+      });
+    } else if(this.state.action === Action.DELETE_SUCCESS) {
+      this.setState({
+        action: Action.Load,
+        actionData: null,
+      });
+    }
   }
 
   shouldComponentUpdate(nextProps, nextState) {
@@ -130,13 +165,12 @@ class DynAdmin extends Component {
   }
 
 
+
   handleActionNotification = (type, notifData) => {
     console.log(`Handle notification: ${type}`, notifData)
     switch(type) {
       case Action.FLOW_DRAW_END: {
-        const element = this.mgr.createElement(this.model, notifData.source, notifData.componentId);
-        element.source = notifData.source;
-        element.target = notifData.target;
+        const element = this.mgr.createLinkElement(this.model, notifData.configName, notifData.source, notifData.target);
         this.setState({
           action: Action.Load,
           actionData: null,
@@ -224,30 +258,6 @@ class DynAdmin extends Component {
         )
       },
     })
-
-    /*<NavTab key={`NAV_T_${flowDataId}`}>
-      <TabPane id={`TP_${flowDataId}`} title={"Data binding"}>
-        <IODataBinder key={flowDataId} source={srcO} target={trgI}/>
-      </TabPane>
-    </NavTab>*/
-    //<IODataBinder key={'IOBINDER'} {...getIODataBinderTestData()} />,
-    /*const panelConfig = {
-      closable: true,
-      panels: {
-        IOBinding: {
-          title: 'Data binding',
-          render: (cntProps) => {
-            return (
-              <IODataBinder 
-                key={flowDataId} 
-                source={srcO} 
-                target={trgI}
-                />
-            );
-          }
-        } 
-      }
-    }*/
   }
 
   isModalActive = () => {
@@ -255,7 +265,6 @@ class DynAdmin extends Component {
   }
 
   handleSaveAndCloseModal = () => {
-    
     console.log(`Handle modal save and close`)
     if(this.isModalActive()) {
       const { modalData } = this.state;
@@ -294,6 +303,34 @@ class DynAdmin extends Component {
     })
   }
 
+  dispath = (action, payload) => {
+    const { componentId } = payload;
+    /*this.setState({
+      action: action.type,
+      ...payload
+    })*/
+    switch(action.type) {
+      case Action.CREATED:
+        return this.handleEditElementProps(componentId);
+      case Action.FOCUS:
+        return this.handleEditElementProps(componentId);  
+      case Action.DELETE:
+        return this.handleDeleteElement(componentId);
+      default:
+      throw new Error(`Handler not defined for action ${action.type}`)
+    }
+  }
+
+  handleDeleteElement = (componentIds) => {
+    // alert(`DELETE ${componentId}`)
+    if(this.state.action !== Action.DELETE) {
+      this.setState({
+        action: Action.DELETE,
+        actionData: componentIds,
+      });
+    }
+  }
+
   handleCreateElement = (parentElId, componentId) => {
     if(this.mgr.isLink(this.model, componentId)) {
       this.setState({
@@ -304,6 +341,14 @@ class DynAdmin extends Component {
       const element = this.mgr.createElement(this.model, parentElId, componentId);
       this.handleEditElementProps(element.id);
     }
+
+    // TODO MAP action to Ui Manager
+   /* mapCompoentConfigToHandler = {
+      "layout" : {
+        "uiManger": UIManger.LAYOUT, 
+        "create":  
+      } 
+    }*/
   }
   
 
@@ -311,9 +356,10 @@ class DynAdmin extends Component {
     // console.log(`Update: ${dataKey}`)
     const idDescription = describeId(dataKey);
     this.model.set(dataKey, data);
-    if(idDescription.localId === 'name') {
-      this.handleEditElementProps(idDescription.parentId);
-    }
+   
+    this.setState({
+      action: Action.EditProps,
+    })
   }
 
   handleEditElementProps = (elementId) => {
@@ -331,12 +377,11 @@ class DynAdmin extends Component {
       dataKeys: dataKeys,
       handleSaveProperty: this.handleSaveProperty,
       attrConfig: attrConfig,
-      mgr: this.mgr,
-      model: this.model
     }
 
     this.setState({
         action: Action.EditProps,
+        focusedId: element.id,
         actionData: editProps,
         propsPanelData: {
           title: editProps.data.name,
@@ -364,21 +409,10 @@ class DynAdmin extends Component {
   }
 
   
-  render() {    
-    let propertiesPanel= {}
-    if(this.state.propsPanelData) {
-      propertiesPanel = {
-        title: `${this.state.propsPanelData.title}`,
-        content: <EditProperties {...this.state.propsPanelData.props}/>
-      }
-    } else {
-      propertiesPanel = {
-        title: `Properties`,
-        content: `No element selected`,
-      }
-    }
-
-    
+  render() {       
+    const modelId = this.state.model.id;
+    const focusedId = this.state.focusedId;
+    const propsPanelTitle = focusedId && this.state.model.getComponent(focusedId).name;
     return (
       <div id="dyn-admin" className="dyn-admin">
         <header id="dyn-admin-header">
@@ -388,39 +422,32 @@ class DynAdmin extends Component {
             {this.toolbar()}
           </div>
           <div className="row" style={{position: 'absolute', 'width':'100%', height:'100%'}}>
-            <div className="doc docLeft col-4" style={{ padding: 0 }}>
+            <div className="doc docLeft col-3" style={{ padding: 0 }}>
               <Panel key={`Explorer_${this.model.id}`} title='Project explorer' className="vars-cexprs-holder" style={{height:'60%'}}>
                   <ModelExplorer key={this.model.id} 
-                    action={this.state.action}
-                    actionData={this.state.actionData}
-                    mgr={this.mgr} 
-                    model={this.model} 
-                    handleElementClick={this.handleEditElementProps}
-                    notify={this.handleActionNotification}
+                    {...this.state}
                     menuConfig={this.menuConfig}>
                   </ModelExplorer>
               </Panel>
-              <Panel key={`Props${this.model.id}`} title={propertiesPanel.title} 
+              <Panel key={modelId} 
+                    title={propsPanelTitle} 
                     className='edit-props-wrap' 
                     style={{height:'40%'}}>
-                {propertiesPanel.content}
+                {this.state.propsPanelData && 
+                <EditProperties key={focusedId} {...this.state.propsPanelData.props}/>}
               </Panel>
             </div> 
-            <div className="doc docRight col-8" style={{ padding: 0 }}>
-              <Panel key={`Stage${this.model.id}`} title="Stage" style={{height:'70%'}}>
+            <div className="doc docRight col" style={{ padding: 0 }}>
+              <Panel key={`Stage${this.model.id}`} title="Stage" style={{height:'30%'}}>
                <Stage key={this.model.id} 
-                    mgr={this.mgr}
-                    action={this.state.action}
-                    actionData={this.state.actionData} 
-                    model={this.model}
-                    handleElementClick={this.handleEditElementProps}
+                    {...this.state}
                     onInitDataBinding={this.handleIOBinding}
                     notify={this.handleActionNotification}
                     menuConfig={this.menuConfig}>
                 </Stage>
               </Panel>
-              <Panel key={`Layout${this.model.id}`} title="Layouts and terminal panel" style={{height:'30%'}}>
-                Layouts
+              <Panel key={`Layout${this.model.id}`} title="Layouts and terminal panel" style={{height:'70%'}}>
+                {this.state.pageId && <LayoutPlanner key={this.state.pageId} {...this.state}/>}
               </Panel>
             </div>
           </div>
@@ -431,6 +458,7 @@ class DynAdmin extends Component {
             modalRoot={this.props.modalRoot}
             onClose={this.handleCancelModal}
             onSave={this.handleSaveAndCloseModal}
+            dispath={this.dispath}
         >
           {this.state.modalData ? this.state.modalData.content : null }
         </Modal>

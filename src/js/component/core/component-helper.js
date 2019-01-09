@@ -1,5 +1,6 @@
 import DynAdminService, { ADMIN_LOG_TYPE } from "js/common/dynadmin-service";
 import { _isFunction, _forEach, _isString } from "js/common/utils";
+import { _cloneDeep } from "../../common/utils";
 
 export default class ComponentHelper extends DynAdminService {
     constructor(model, fullId, componentConfig) {
@@ -23,7 +24,6 @@ export default class ComponentHelper extends DynAdminService {
         if(!_isFunction(callback)) {
             return;
         }
-        const component = this.model.getComponent(this.fullId);
         let actualSegments = []
         if(segments === undefined || segments === null) {
             actualSegments = this.config.segments;
@@ -34,21 +34,62 @@ export default class ComponentHelper extends DynAdminService {
                 actualSegments = Array.from(segments);
             }
         }
+        const component = this.model.getComponent(this.fullId);
         actualSegments.forEach(scName => {
             const scEntries = component[scName];
-            if(scName && scEntries) {
-                _forEach(scEntries, (subcomponent) => {
-                    callback(subcomponent, subcomponent.id)
-                })
-            }
+            _forEach(scEntries, (subcomponent, localId) => {
+                callback(subcomponent, localId, scName);
+            });
         });
     }
 
-    getSubcomponents() {
+    getNormalizedData() {
+        const model = this.model;
+        const component = model.get(this.fullId);
+        const copy = {}
+        Object.keys(this.config.properties).forEach(propName => {
+            return copy[propName] = component[propName];
+        });
+
+        this.config.segments.forEach(scName => {
+            const scEntries = component[scName];
+            if(!scEntries) {
+                copy[scName] = [];
+                return;
+            }
+            const copyOfEntries = []
+            Object.keys(scEntries).forEach((scLocalId) => {
+                console.log(`ENTRY ${scLocalId}`)
+                if(!scLocalId) return;
+                const scHelper = model.getComponentHelper(scEntries[scLocalId].id)
+                copyOfEntries.push(scHelper.getNormalizedData());
+            })
+            copy[scName] = copyOfEntries;
+        });
+        copy.id = component.meta.localId;
+        return copy;
+    }
+
+    getSubcomponents(segments) {
         const resultArr = [];
         this.forEachSubcomponent( (sc) => {
             resultArr.push(sc)
-        })
+        }, segments)
+        return resultArr;
+    }
+
+    // @to-do
+    hasSubcomponents() {
+        return this.getSubcomponents().length > 0;
+    }
+
+    
+
+    getOutgoingLinksIds() {
+        const resultArr = [];
+        this.forEachSubcomponent( (sc) => {
+            resultArr.push(sc.id)
+        }, ["outgoingLinks"])
         return resultArr;
     }
 
@@ -80,14 +121,18 @@ export default class ComponentHelper extends DynAdminService {
         return this.config.isContainer();
     }
 
-    parentId() {
-        return this.model.getParentIdOf(this.fullId);
+    getParentId() {
+        return this.model.getParentId(this.fullId);
     }
 
     isStageComponent() {
         if(this.isLink() || this.isContainer() || this.isUnitComponent())
             return true;
         return false;
+    }
+
+    isAttribute() {
+        return this.config.meta.isAttribute;
     }
 
     getLogic(reqired) {

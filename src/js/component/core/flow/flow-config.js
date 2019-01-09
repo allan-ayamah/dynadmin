@@ -1,5 +1,4 @@
-import { FLOW_TYPE } from '../../constants';
-
+import { LINK_TYPES } from 'js/common/constants';
 import { _forEach, _getLocalId } from "js/common/utils";
 
 export const FLOW_CONFIG_NAME = 'flow';
@@ -36,9 +35,9 @@ export const flowConfig = {
             required: true,
             data: {
                 value: [
-                    FLOW_TYPE.NAVIGATION_NORMAL, 
-                    FLOW_TYPE.NAVIGATION_AUTO, 
-                    FLOW_TYPE.DATA_FLOW
+                    LINK_TYPES.NAVIGATION_NORMAL, 
+                    LINK_TYPES.NAVIGATION_AUTO, 
+                    LINK_TYPES.TRANSPORT,
                 ],
                 label: [
                     'normal navigation', 
@@ -46,7 +45,7 @@ export const flowConfig = {
                     'data flow'
                 ]
             },
-            default: FLOW_TYPE.NAVIGATION_NORMAL
+            default: LINK_TYPES.NAVIGATION_NORMAL
         },
         validate: {
             type: 'boolean',

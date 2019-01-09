@@ -50,7 +50,7 @@ export class EditProperties extends React.Component {
                 return data(
                     this.state.data,
                     parentData, 
-                    this.props.model.data,
+                    this.props.model,
                     this.props.mgr
                 );
             }

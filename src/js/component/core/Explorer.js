@@ -1,67 +1,4 @@
-import React from 'react';
-import { ContextMenu, MenuItem, SubMenu, ContextMenuTrigger} from "react-contextmenu";
-import PropTypes from 'prop-types';
-import {clone} from '../../common/helpers';
-
-
-function ElementContextMenu(props) {
-    const ctxMenuId = props.id;
-    const elementId = props.elementId;
-    const config = props.config;
-    const actions = config.actions;
-    const groups = config.groups;
-    const menuItems = config.menuItems;
-
-    const handleItemClick = (evt, data, target) => {
-        const action = data.action;
-        console.log(`Menuclicked: `)
-        return actions[action].handle(evt, data, target);  
-    }
-
-    const displayMenu = [];
-    groups.forEach((_group, groupIndex) => {
-        const grpItems = menuItems.filter((gItem) => {
-            if(gItem.group === _group.id) return gItem;
-        });
-
-        //console.log(`Group "${_group.id}" has ${grpItems.length} menus`)
-        const mItems = grpItems.map((mItem, idx) => {
-            const mData = {...mItem, elementId}
-            return (
-                <MenuItem key={`${ctxMenuId}_${idx}`} onClick={handleItemClick} data={mData}>
-                    {mItem.name}
-                </MenuItem>
-            )
-        });
-        if ((_group.viewItemsInSubMenu && mItems.length > 0) || mItems.length > 1) {
-            displayMenu.push(
-                <SubMenu key={`${ctxMenuId}_${_group.id}`} title={_group.name}>
-                    {mItems}
-                </SubMenu>
-            );
-        } else {
-            displayMenu.push(mItems);
-        }
-    })
-    return (
-        <ContextMenu id={ctxMenuId} key={ctxMenuId}>{displayMenu}</ContextMenu>
-    );
-}
-
-/*ElementContextMenu.propTypes = {
-    id: PropTypes.string.isRequired,
-    trigger: PropTypes.shape({
-        elementId: PropTypes.string.is,
-        handleItemClick: PropTypes.func.isRequired,
-        config: PropTypes.shape({
-            actions: PropTypes.array,
-            groups: PropTypes.array,
-            menuItems: PropTypes.array,
-        }).isRequired,
-    }).isRequired
-};*/
-
-export class ModelExplorer extends React.Component {
+export class Explorer extends React.Component {
     constructor(props) {
         super(props);
         this.mgr = props.mgr;
@@ -146,12 +83,9 @@ export class ModelExplorer extends React.Component {
     
     render() {
         const model = this.props.model;
-        const tree = this.createTree(model.getData())
+        const tree = this.createTree(this.props, element)
         return (
             <>{tree}</>
         );
     }
 }
-
-
-export default ModelExplorer;

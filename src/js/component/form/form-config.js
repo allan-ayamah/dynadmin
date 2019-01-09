@@ -14,6 +14,8 @@ export const formConfig = {
         label: 'Form',
         icon: 'form',
         viewOnly: true,
+        formBased: true,
+        isFormComponent: true,
         flowSource: true,
         flowTarget: true,
         group: 'viewComponents',

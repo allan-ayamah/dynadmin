@@ -1,6 +1,6 @@
 import DynAdminService, { ADMIN_LOG_TYPE } from "js/common/dynadmin-service";
 import ComponentHelper from './component-helper';
-import { _cloneDeep, _get, _set, _has } from "js/common/utils"
+import { _cloneDeep, _get, _set, _has, _unset } from "js/common/utils"
 
 export default class Model extends DynAdminService {
     constructor(id, data, mgr) {
@@ -27,24 +27,43 @@ export default class Model extends DynAdminService {
         return new Model(id, data, mgr)
     }
 
+    createComponent(configName, parentId) {
+        return this.mgr.createElement(this, parentId, configName);
+    }
+    
     getComponent(fullId) {
         return this.get(fullId);
     }
 
-    getComponentHelper(fullId) {
-        const id = fullId;
+    deleteComponent(fullId) {
+        if(_unset(this._data, fullId)) {
+            if(this.componentHelpers.has(fullId)) {
+                this.componentHelpers.delete(fullId);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    
+    getComponentHelper(componentId) {
+        return this.componentHelper(componentId);
+    }
+
+    componentHelper(componentId) {
+        const id = componentId;
         let helper = this.componentHelpers.get(id); 
         if(helper === undefined || helper == null) {
-            const component = this.getComponent(fullId);
+            const component = this.getComponent(componentId);
             const config = this.mgr.getConfigByName(component.meta.configName);
-            helper = new ComponentHelper(this, fullId, config);
+            helper = new ComponentHelper(this, componentId, config);
             this.componentHelpers.set(id, helper);
         }
         return helper;
     }
 
     getParentId(id) {
-        this.mgr.parentIdOf(this, id);
+        return this.mgr.parentIdOf(this, id);
     }
 
 

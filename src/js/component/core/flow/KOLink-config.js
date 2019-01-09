@@ -1,5 +1,4 @@
-import { FLOW_TYPE } from '../../constants';
-
+import { LINK_TYPES } from 'js/common/constants';
 import { _forEach, _getLocalId } from "js/common/utils";
 
 export const KOLINK_CONFIG_NAME = 'koln';
@@ -34,7 +33,7 @@ export const KOLinkConfig = {
             type: 'string',
             name: 'Type',
             required: true,
-            default: FLOW_TYPE.NAVIGATION_NORMAL
+            default: LINK_TYPES.NAVIGATION_NORMAL
         },
         validate: {
             type: 'boolean',

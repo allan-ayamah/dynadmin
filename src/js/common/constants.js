@@ -1,14 +1,24 @@
 export const Action = {
     Load: 'load',
-    Add: 'ad',
+    FOCUS: "FOCUS",
+    CREATE: "create",
+    CREATED : "CREATED",
+    DELETE: "DELETE",
+    DELETE_SUCCESS: "DELETE_SUCCESS",
+    DELETE_FAIL: "DELETE_FAIL",
     EditProps: 'ep',
-    Remove: 'rm',
-    Copy: 'cp',
+    Copy: 'copy',
     Paste: 'ps',
     FLOW_DRAW_BEGIN: 'fdb',
     FLOW_DRAW_END: 'fde',
-    FLOW_DRAW_ABORT: "fda"
+    FLOW_DRAW_ABORT: "fda",
+    Add: "add",
 }
+
+export const UIManager = {
+    LAYOUT_BUILDER: "Layout",
+}
+  
 
 export const PREDICATES = {
     label: ['Equal', 'Greater or Equal', 'Greater Than', 'Less or Equal', 'Less Than', 'Not Equal'],
@@ -25,11 +35,15 @@ export const CONTENT_TYPES = {
     value: ['text', 'html'],
 }
 
-export const FLOW_TYPE = {
+export const LINK_TYPES = {
     NAVIGATION_NORMAL: 'nav',
     NAVIGATION_AUTO: 'auto',
-    DATA_FLOW: 'data',
+    DATA_FLOW: 'transport',
 }
+
+export const RESULT_CODE_PROPERTY_NAME = "resultCode";
+export const RESULT_SUCCESS_CODE = "success";
+export const RESULT_ERROR_CODE = "error";
 
 export const SCRIPT_TYPE = {
     JAVASCRIPT: 'JS',

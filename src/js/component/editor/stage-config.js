@@ -6,6 +6,7 @@ const connectorStyle = {
 export const jsPlumbConfig = {
     DragOptions: { cursor: 'pointer', zIndex: 2000 }, 
     Connector: [ "Straight", { cssClass: "normalLinkConnect"}],
+    DeleteEndpointsOnDetach: true,
     ConnectionsDetachable:false,
     Anchor: [ 
         [ 0.2, 0, 0, -1 ],  

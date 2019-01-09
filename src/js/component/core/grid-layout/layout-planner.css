@@ -1,0 +1,28 @@
+.grid-view .row > .col,
+.grid-view .row > [class^="col-"] {
+    padding-top: .75rem;
+    padding-bottom: .75rem;
+    background-color: rgba(86, 61, 124, .15);
+    border: 1px solid rgba(86, 61, 124, .2);
+}
+
+/*
+.grid-view .grid-row > .grid-col {
+    position: relative;
+}
+
+.grid-view .grid-row > .grid-col::before {
+    position: absolute;
+    top: 0; right: 0; bottom: 0; left: 0;
+    margin-right: auto;
+    margin-left: auto;
+    width: calc(100% - (2 * var(--offset)));
+    max-width: var(--max_width);
+    min-height: 100vh;
+    content: '';
+    background-image: var(--background-columns), var(--background-baseline);  
+    background-size: var(--background-width) 100%;
+    background-position: 0 var(--baseline-offset);
+    z-index: 1000;
+    pointer-events: none;
+} */

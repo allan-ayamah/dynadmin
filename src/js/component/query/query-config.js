@@ -1,5 +1,5 @@
-import { DATA_TYPES } from '../constants';
-import { generateInputOutput, _forEach } from '../../common/utils';
+import { DATA_TYPES } from 'js/common/constants';
+import { generateInputOutput, _forEach } from 'js/common/utils';
 
 const QUERY_MODE = {
     SELECT: 'select',
@@ -12,12 +12,7 @@ export const queryInputConfig = {
         namePrefix: 'Query Input',
         label: 'Query Input',
         icon: 'query-input',
-        flowSource: true,
-        targetSource: true,
-        isViewOperation: true,
-        maxOKLink: 1,
-        maxKOLink: 1,
-        maxNormalLink: -1,
+        isAttribute: true,
     },
     properties: {
         name: {
@@ -50,6 +45,7 @@ export const queryOutputConfig = {
         namePrefix: 'Query Output',
         label: 'Query Output',
         icon: 'query-output',
+        isAttribute: true,
     },
     properties: {
         name: {
@@ -74,9 +70,12 @@ export const queryConfig = {
         label: 'Query',
         icon: 'Query',
         group: 'utilityComponents',
-        viewOperation: true,
         flowSource: true,
-        flowTarget: true,
+        targetSource: true,
+        viewOperation: true,
+        maxOKLink: 1,
+        maxKOLink: 1,
+        maxNormalLink: -1,
     },
     properties: {
         name: {

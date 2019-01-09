@@ -74,8 +74,34 @@ export function makeStageItem(Item, eventListeners) {
             this.setState({
                 event: StageItemEvent.RENDER_CHILDREN,
                 children: newChildren,
-               
             })
+        }
+
+        delete() {
+            this.setState({
+                event: StageItemEvent.UN_MOUNTING,
+            })
+        }
+
+        deleteChildren(stageIds) {
+            if(!this.props.isContainer) return;
+            console.log(`${this.getStageId()}unmount new child`)
+            
+            if(this.state.children.length == 0)
+                return;
+            const newChildren = [];
+            this.state.children.forEach((ch) => {
+                if(stageIds.includes(ch.ref.current.getStageId())){
+                    ch.ref.current.delete();
+                } else {
+                    newChildren.push(ch)
+                }
+            })  
+            if(this.state.children.length === newChildren.length) {
+                this.setState({
+                    children: newChildren
+                })
+            }
         }
 
         getChildrenStageIds() {
@@ -87,6 +113,8 @@ export function makeStageItem(Item, eventListeners) {
             }
             return []
         }
+
+        
 
         updateData(newData) {
             this.setState({
@@ -263,6 +291,7 @@ export function makeStageItem(Item, eventListeners) {
             if((nextState.event === StageItemEvent.UPDATE_POSITION
                 || nextState.event === StageItemEvent.RENDER_CHILDREN
                 || nextState.event === StageItemEvent.UPDATE_DATA
+                || nextState.event === StageItemEvent.UN_MOUNTING
                 )) {
                 console.log(`StageItem[${this.props.id}] should update`)
                 return true;
@@ -282,7 +311,9 @@ export function makeStageItem(Item, eventListeners) {
             }, () => this.props.notifyEvent(eventToSend, this.state, prevState));
 
             //Check actual width and height
-            this.reviewWidthAndHeight();
+            if(!this.state.event === StageItemEvent.UN_MOUNTING) {
+                this.reviewWidthAndHeight();
+            }
         }
 
         getTop = () => {
@@ -328,6 +359,11 @@ export function makeStageItem(Item, eventListeners) {
         
 
         render() {
+
+            if(this.state.event === StageItemEvent.UN_MOUNTING) {
+                return <></>
+            }
+          
             const itemProps  =  this.props.itemProps;
             itemProps.name = this.state.data.name;
             itemProps.data = this.state.data;
